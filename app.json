@@ -14,7 +14,8 @@
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Commonplace needs photo library access so you can add photos and create custom stickers.",
         "NSCameraUsageDescription": "Commonplace needs camera access so you can capture memories for your scrapbook.",
-        "NSMicrophoneUsageDescription": "Commonplace needs microphone access so you can record voice memos."
+        "NSMicrophoneUsageDescription": "Commonplace needs microphone access so you can record voice memos.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -45,6 +46,11 @@
           "color": "#8B5CF6"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "6840442d-77f6-47fa-bb67-f8bfc67bd86e"
+      }
+    }
   }
 }

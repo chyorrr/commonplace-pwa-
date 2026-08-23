@@ -1,0 +1,33 @@
+{
+  "cli": {
+    "version": ">= 22.2.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "npm": {
+        "legacyPeerDeps": true
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "npm": {
+        "legacyPeerDeps": true
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "npm": {
+        "legacyPeerDeps": true
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
