@@ -1,0 +1,40 @@
+{
+  "name": "commonplace-scrapbook",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "expo start --clear",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "expo": "~57.0.15",
+    "expo-image-picker": "~57.0.12",
+    "expo-notifications": "^57.0.13",
+    "expo-status-bar": "~57.0.1",
+    "lucide-react": "^0.475.0",
+    "lucide-react-native": "^0.475.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-svg": "15.15.4",
+    "react-native-web": "^0.21.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@types/react": "~19.2.4",
+    "@types/react-dom": "~19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "babel-preset-expo": "~57.0.0",
+    "typescript": "~6.0.3",
+    "vite": "^6.1.0"
+  }
+}

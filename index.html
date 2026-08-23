@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>commonplace — personal scrapbook & notes</title>
+    <meta name="description" content="A personal digital scrapbook, journal, and memory wall." />
+    
+    <!-- Preconnect to Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet" />
+
+    <style>
+      /* Base Resets & tactile styles */
+      *, *::before, *::after {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html, body, #root {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #141218;
+        font-family: "DM Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        user-select: none;
+      }
+
+      /* Subtle tactile paper grain overlay */
+      .paper-noise {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        opacity: 0.024;
+        background-image: radial-gradient(#000 0.75px, transparent 0.75px);
+        background-size: 8px 8px;
+        z-index: 9999;
+      }
+
+      /* Smooth custom scrollbars */
+      ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(120, 110, 100, 0.2);
+        border-radius: 999px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(120, 110, 100, 0.35);
+      }
+
+      /* Allow text selection inside editable inputs */
+      input, textarea, [contenteditable="true"] {
+        user-select: text !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div class="paper-noise"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
