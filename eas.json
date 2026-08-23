@@ -7,8 +7,8 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "npm": {
-        "legacyPeerDeps": true
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       }
     },
     "preview": {
@@ -16,14 +16,14 @@
       "android": {
         "buildType": "apk"
       },
-      "npm": {
-        "legacyPeerDeps": true
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       }
     },
     "production": {
       "autoIncrement": true,
-      "npm": {
-        "legacyPeerDeps": true
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       }
     }
   },
