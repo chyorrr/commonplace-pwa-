@@ -32,8 +32,6 @@ export const spotifyService = {
   // Generate track metadata from title/artist or Spotify link
   createTrackMeta(title: string, artist: string, pastedUrl?: string): SpotifyTrackMeta {
     const parsed = pastedUrl ? this.parseSpotifyUrl(pastedUrl) : { trackId: null, isSpotify: false };
-    const trackId = parsed.trackId || '4cOdK2wGLETKBW3PvgPWqT';
-
     const cleanTitle = title.trim() || 'Untitled Track';
     const cleanArtist = artist.trim() || 'Artist';
 
@@ -43,7 +41,6 @@ export const spotifyService = {
     
     const spotifyUri = parsed.trackId ? `spotify:track:${parsed.trackId}` : `spotify:search:${encodeURIComponent(`${cleanTitle} ${cleanArtist}`)}`;
 
-    // High quality album art placeholder with pastel tones
     const coverUrl = `https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80`;
 
     return {

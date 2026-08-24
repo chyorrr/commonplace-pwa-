@@ -15,8 +15,8 @@ interface ShareModalProps {
 export const ShareModal: React.FC<ShareModalProps> = ({
   visible,
   onClose,
-  title = 'late night thoughts',
-  content = "Sometimes i just overthink things that don't even matter...",
+  title = 'Scrapbook Memory',
+  content = 'Curated in Commonplace',
 }) => {
   const [copied, setCopied] = React.useState(false);
 
@@ -42,15 +42,16 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <View style={styles.cardPreviewInner}>
               <View style={styles.cardContentLeft}>
                 <Text style={styles.cardPreviewTitle}>{title}</Text>
-                <Text style={styles.cardPreviewBody}>{content}</Text>
-                <Text style={styles.cardFooterBrand}>commonplace</Text>
+                {Boolean(content) && <Text style={styles.cardPreviewBody}>{content}</Text>}
+                <Text style={styles.cardFooterBrand}>commonplace scrapbook</Text>
               </View>
 
-              {/* Daisy Pressed Flower Illustration */}
+              {/* Brand Logo Mask Badge */}
               <View style={styles.flowerStickerWrapper}>
                 <Image
-                  source={{ uri: 'https://images.unsplash.com/photo-1597848212624-a19eb35e2651?w=200&auto=format&fit=crop&q=80' }}
+                  source={{ uri: '/icons/icon-192.png' }}
                   style={styles.flowerImg}
+                  resizeMode="contain"
                 />
               </View>
             </View>

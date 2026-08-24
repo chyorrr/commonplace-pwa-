@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { BackHandler } from 'react-native';
 import { AtmosphereType, Board, CustomSticker, DeskItem, FreeformTransform, MemorySnippet, Pin, PinType, ReminderItem } from '../types';
 import { initialBoards, initialDeskItems, initialMemory, initialStickers } from '../data/initialData';
 import { reminderService } from '../services/reminderService';
@@ -283,10 +284,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // 2. Navigation State
-  const [activeTab, setActiveTab] = useState<ScreenTab>('home');
+  const [activeTab, setActiveTabState] = useState<ScreenTab>('home');
+  const [tabHistory, setTabHistory] = useState<ScreenTab[]>(['home']);
   const [activeBoardId, setActiveBoardId] = useState<string | null>(null);
   const [activePinDetail, setActivePinDetail] = useState<Pin | null>(null);
   const [isFreeformMode, setIsFreeformMode] = useState<boolean>(false);
+
+  const setActiveTab = (tab: ScreenTab) => {
+    setActiveTabState(tab);
+    setTabHistory((prev) => (prev[prev.length - 1] === tab ? prev : [...prev, tab]));
+  };
 
   // 3. Boards State (Empty by default per user request)
   const [boards, setBoards] = useState<Board[]>(() => {
@@ -788,11 +795,166 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setReminders([]);
     safeStorage.removeItem(STORAGE_KEYS.BOARDS);
     safeStorage.removeItem(STORAGE_KEYS.DESK);
-    safeStorage.removeItem(STORAGE_KEYS.STICKERS);
     safeStorage.removeItem(STORAGE_KEYS.REMINDERS);
     setActiveBoardId(null);
     setActivePinDetail(null);
   };
+
+  // Comprehensive Phone Back Button & PopState Navigation Handler
+  const stateRef = useRef({
+    activePinDetail,
+    isCreateSheetOpen,
+    isSettingsOpen,
+    isGuideOpen,
+    isNoteEditorOpen,
+    isVoiceNoteOpen,
+    isStickerStudioOpen,
+    isLockModalOpen,
+    isInstallModalOpen,
+    activeBoardId,
+    activeTab,
+    tabHistory,
+  });
+
+  useEffect(() => {
+    stateRef.current = {
+      activePinDetail,
+      isCreateSheetOpen,
+      isSettingsOpen,
+      isGuideOpen,
+      isNoteEditorOpen,
+      isVoiceNoteOpen,
+      isStickerStudioOpen,
+      isLockModalOpen,
+      isInstallModalOpen,
+      activeBoardId,
+      activeTab,
+      tabHistory,
+    };
+  });
+
+  // Push browser history state on overlay/screen changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.history) {
+      const hasActiveOverlay =
+        activePinDetail ||
+        isCreateSheetOpen ||
+        isSettingsOpen ||
+        isGuideOpen ||
+        isNoteEditorOpen ||
+        isVoiceNoteOpen ||
+        isStickerStudioOpen ||
+        isLockModalOpen ||
+        isInstallModalOpen ||
+        activeBoardId ||
+        activeTab !== 'home';
+
+      if (hasActiveOverlay) {
+        window.history.pushState({ screen: activeTab, board: activeBoardId }, '');
+      }
+    }
+  }, [
+    activePinDetail,
+    isCreateSheetOpen,
+    isSettingsOpen,
+    isGuideOpen,
+    isNoteEditorOpen,
+    isVoiceNoteOpen,
+    isStickerStudioOpen,
+    isLockModalOpen,
+    isInstallModalOpen,
+    activeBoardId,
+    activeTab,
+  ]);
+
+  useEffect(() => {
+    const handleBackButton = (): boolean => {
+      const s = stateRef.current;
+
+      // 1. Close open modals first
+      if (s.activePinDetail) {
+        setActivePinDetail(null);
+        return true;
+      }
+      if (s.isCreateSheetOpen) {
+        closeCreateSheet();
+        return true;
+      }
+      if (s.isSettingsOpen) {
+        closeSettings();
+        return true;
+      }
+      if (s.isGuideOpen) {
+        closeGuide();
+        return true;
+      }
+      if (s.isNoteEditorOpen) {
+        closeNoteEditor();
+        return true;
+      }
+      if (s.isVoiceNoteOpen) {
+        closeVoiceNote();
+        return true;
+      }
+      if (s.isStickerStudioOpen) {
+        closeStickerStudio();
+        return true;
+      }
+      if (s.isLockModalOpen) {
+        closeLockModal();
+        return true;
+      }
+      if (s.isInstallModalOpen) {
+        closeInstallModal();
+        return true;
+      }
+
+      // 2. Exit active board to previous screen
+      if (s.activeBoardId) {
+        setActiveBoardId(null);
+        return true;
+      }
+
+      // 3. Navigate back to previous tab
+      if (s.tabHistory.length > 1) {
+        const nextHistory = [...s.tabHistory];
+        nextHistory.pop(); // Remove current tab
+        const prevTab = nextHistory[nextHistory.length - 1] || 'home';
+        setTabHistory(nextHistory);
+        setActiveTabState(prevTab);
+        return true;
+      }
+
+      // 4. Return to home tab if not on home
+      if (s.activeTab !== 'home') {
+        setActiveTabState('home');
+        setTabHistory(['home']);
+        return true;
+      }
+
+      // Already on clean Home screen with nothing open -> allow default exit
+      return false;
+    };
+
+    // React Native hardware back button (Android)
+    const backSubscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      return handleBackButton();
+    });
+
+    // Browser / PWA popstate (Android gesture back / swipe back / browser back button)
+    const onPopState = (e: PopStateEvent) => {
+      const handled = handleBackButton();
+      if (handled) {
+        e.preventDefault?.();
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+
+    return () => {
+      backSubscription.remove();
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, []);
 
   return (
     <AppContext.Provider

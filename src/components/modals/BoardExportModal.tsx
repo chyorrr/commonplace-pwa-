@@ -4,7 +4,7 @@ import { Board, Pin } from '../../types';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { X, Printer, Download, Share2, MessageCircle, Instagram, Check, FileImage } from 'lucide-react-native';
-import { exportElementAsImage, downloadBoardImage } from '../../utils/boardExport';
+import { exportBoardAsImage, exportBoardAsPdf } from '../../utils/boardExport';
 import { shareService } from '../../services/shareService';
 
 interface BoardExportModalProps {
@@ -19,33 +19,55 @@ export const BoardExportModal: React.FC<BoardExportModalProps> = ({
   onClose,
 }) => {
   const [isExporting, setIsExporting] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
 
-  const handleExport = async (format: 'png' | 'jpg') => {
+  const getTargetElement = (): HTMLElement | null => {
+    return (
+      document.getElementById('board-canvas-container') ||
+      document.getElementById('export-sheet-paper')
+    );
+  };
+
+  const handleExportImage = async (format: 'png' | 'jpg') => {
     setIsExporting(true);
+    setDownloadSuccess(null);
     try {
-      // 1. Target the rendered board element or export paper
-      const targetElem =
-        document.getElementById('board-canvas-container') ||
-        document.getElementById('export-sheet-paper');
-
+      const targetElem = getTargetElement();
       if (targetElem) {
-        const dataUrl = await exportElementAsImage(targetElem, { format });
-        const cleanName = `${board.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}-scrapbook.${format}`;
-        await downloadBoardImage(dataUrl, cleanName);
+        const cleanName = `${(board.title || 'scrapbook').toLowerCase().replace(/[^a-z0-9]/g, '-')}-board.${format}`;
+        await exportBoardAsImage(targetElem, format, cleanName);
+        setDownloadSuccess(`${format.toUpperCase()} Downloaded`);
+        setTimeout(() => setDownloadSuccess(null), 3000);
       } else {
         window.print();
       }
     } catch (e) {
-      console.warn('Export error:', e);
+      console.warn('Image export error:', e);
       window.print();
     } finally {
       setIsExporting(false);
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleExportPdf = async () => {
+    setIsExporting(true);
+    setDownloadSuccess(null);
+    try {
+      const targetElem = getTargetElement();
+      if (targetElem) {
+        const cleanName = `${(board.title || 'scrapbook').toLowerCase().replace(/[^a-z0-9]/g, '-')}-board.pdf`;
+        await exportBoardAsPdf(targetElem, cleanName);
+        setDownloadSuccess('PDF Downloaded');
+        setTimeout(() => setDownloadSuccess(null), 3000);
+      } else {
+        window.print();
+      }
+    } catch (e) {
+      console.warn('PDF export error:', e);
+      window.print();
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleShareWhatsApp = () => {
@@ -80,10 +102,18 @@ export const BoardExportModal: React.FC<BoardExportModalProps> = ({
             </Pressable>
           </View>
 
+          {/* Download Success Pill */}
+          {Boolean(downloadSuccess) && (
+            <View style={styles.successBanner}>
+              <Check size={14} color="#16A34A" />
+              <Text style={styles.successBannerText}>{downloadSuccess}! Check your downloads.</Text>
+            </View>
+          )}
+
           {/* Quick Action Export Buttons */}
           <View style={styles.actionButtonsRow}>
             <Pressable
-              onPress={() => handleExport('png')}
+              onPress={() => handleExportImage('jpg')}
               disabled={isExporting}
               style={({ pressed }) => [styles.exportBtn, styles.exportBtnPrimary, pressed && { opacity: 0.8 }]}
             >
@@ -92,24 +122,25 @@ export const BoardExportModal: React.FC<BoardExportModalProps> = ({
               ) : (
                 <FileImage size={15} color="#FFF" />
               )}
-              <Text style={styles.exportBtnPrimaryText}>Save as PNG</Text>
+              <Text style={styles.exportBtnPrimaryText}>Save JPG</Text>
             </Pressable>
 
             <Pressable
-              onPress={() => handleExport('jpg')}
+              onPress={() => handleExportImage('png')}
               disabled={isExporting}
               style={({ pressed }) => [styles.exportBtn, styles.exportBtnSecondary, pressed && { opacity: 0.8 }]}
             >
               <Download size={15} color={colors.brand.purpleDark} />
-              <Text style={styles.exportBtnSecondaryText}>Save as JPG</Text>
+              <Text style={styles.exportBtnSecondaryText}>Save PNG</Text>
             </Pressable>
 
             <Pressable
-              onPress={handlePrint}
+              onPress={handleExportPdf}
+              disabled={isExporting}
               style={({ pressed }) => [styles.exportBtn, styles.exportBtnSecondary, pressed && { opacity: 0.8 }]}
             >
-              <Printer size={15} color={colors.ink.primary} />
-              <Text style={styles.exportBtnSecondaryText}>PDF / Print</Text>
+              <Printer size={15} color={colors.brand.purpleDark} />
+              <Text style={styles.exportBtnSecondaryText}>Save PDF</Text>
             </Pressable>
           </View>
 
@@ -271,6 +302,25 @@ const styles = StyleSheet.create({
   },
   closeBtn: {
     padding: 4,
+  },
+  successBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#DCFCE7',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  successBannerText: {
+    fontFamily: typography.families.sans,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#15803D',
   },
   actionButtonsRow: {
     flexDirection: 'row',

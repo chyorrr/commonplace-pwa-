@@ -251,8 +251,8 @@ export const CreateSheet: React.FC = () => {
           audioUrl: recordedAudioUrl,
           waveform: recordedWaveform.length > 4 ? recordedWaveform : [0.3, 0.6, 0.8, 0.9, 0.6, 0.4, 0.7, 0.8, 0.5, 0.3],
           recordedDate: 'Today, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          transcriptExcerpt: body.trim() || 'Voice Memo',
-          transcription: body.trim() || 'Voice Memo',
+          transcriptExcerpt: body.trim() || undefined,
+          transcription: body.trim() || undefined,
         };
         break;
     }
