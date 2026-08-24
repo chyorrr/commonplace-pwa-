@@ -83,15 +83,17 @@ export class SpeechAndAudioService {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         this.mediaStream = stream;
 
-        // MediaRecorder with cross-browser mimeType support
+        // MediaRecorder with cross-browser mimeType support (prioritizing audio/mp4 for iOS Safari)
         let options: MediaRecorderOptions = {};
         if (typeof MediaRecorder.isTypeSupported === 'function') {
-          if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          if (MediaRecorder.isTypeSupported('audio/mp4')) {
+            options = { mimeType: 'audio/mp4' };
+          } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
             options = { mimeType: 'audio/webm;codecs=opus' };
           } else if (MediaRecorder.isTypeSupported('audio/webm')) {
             options = { mimeType: 'audio/webm' };
-          } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-            options = { mimeType: 'audio/mp4' };
+          } else if (MediaRecorder.isTypeSupported('audio/aac')) {
+            options = { mimeType: 'audio/aac' };
           }
         }
 
@@ -207,7 +209,7 @@ export class SpeechAndAudioService {
 
       if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
         this.mediaRecorder.onstop = () => {
-          const mimeType = this.mediaRecorder?.mimeType || 'audio/webm';
+          const mimeType = this.mediaRecorder?.mimeType || 'audio/mp4';
           const audioBlob = new Blob(this.audioChunks, { type: mimeType });
 
           // Convert Blob to permanent Base64 Data URI so it persists in storage and never breaks

@@ -8,15 +8,21 @@ export function registerServiceWorker() {
         .then((registration) => {
           console.log('[PWA] ServiceWorker registered with scope:', registration.scope);
 
-          // Check for service worker updates periodically
+          // Check for service worker updates periodically & on app focus
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing;
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  console.log('[PWA] New content is available; please refresh.');
+                  console.log('[PWA] New version ready.');
                 }
               });
+            }
+          });
+
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+              registration.update().catch(() => {});
             }
           });
         })

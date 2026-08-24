@@ -194,6 +194,9 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: 'transparent',
     paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0,
+    alignSelf: 'center',
+    position: 'relative',
+    overflow: 'hidden',
   },
   appViewport: {
     flex: 1,

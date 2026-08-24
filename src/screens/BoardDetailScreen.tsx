@@ -4,8 +4,9 @@ import { useApp } from '../context/AppContext';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Tape } from '../components/common/Tape';
-import { ChevronLeft, MoreHorizontal, Plus } from 'lucide-react-native';
+import { ChevronLeft, MoreHorizontal, Plus, Share2, Download } from 'lucide-react-native';
 import { ShareModal } from '../components/modals/ShareModal';
+import { BoardExportModal } from '../components/modals/BoardExportModal';
 import { PinCard } from '../components/pins/PinCard';
 import { Pin } from '../types';
 
@@ -17,6 +18,7 @@ export const BoardDetailScreen: React.FC = () => {
   } = useApp();
 
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
 
   if (!activeBoard) return null;
 
@@ -38,7 +40,7 @@ export const BoardDetailScreen: React.FC = () => {
           </Text>
         </View>
 
-        <Pressable onPress={() => setIsShareOpen(true)} style={styles.menuBtn} hitSlop={10}>
+        <Pressable onPress={() => setIsExportOpen(true)} style={styles.menuBtn} hitSlop={10}>
           <MoreHorizontal size={22} color={colors.ink.primary} />
         </Pressable>
       </View>
@@ -49,55 +51,92 @@ export const BoardDetailScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.canvasContent}
       >
-        {pins.length === 0 ? (
-          /* Clean Empty Board State */
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyCard}>
-              <Tape variant="top-center" width={48} height={12} color="rgba(245, 158, 11, 0.82)" />
-              <Text style={styles.emptyTitle}>Empty Scrapbook Board</Text>
-              <Text style={styles.emptySub}>
-                Capture your favorite memories, photos, thoughts, checklists, or Spotify songs to this board.
-              </Text>
-              <Pressable
-                onPress={() => openCreateSheet('board')}
-                style={({ pressed }) => [styles.emptyAddBtn, pressed && styles.btnPressed]}
-              >
-                <Plus size={16} color="#FFFFFF" strokeWidth={2.4} />
-                <Text style={styles.emptyAddBtnText}>Add Something</Text>
-              </Pressable>
+        <View id="board-canvas-container" style={[styles.canvasWrapper, { backgroundColor: boardBg }]}>
+          {pins.length === 0 ? (
+            /* Clean Empty Board State */
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyCard}>
+                <Tape variant="top-center" width={48} height={12} color="rgba(245, 158, 11, 0.82)" />
+                <Text style={styles.emptyTitle}>Empty Scrapbook Board</Text>
+                <Text style={styles.emptySub}>
+                  Capture your favorite memories, photos, thoughts, checklists, or Spotify songs to this board.
+                </Text>
+                <Pressable
+                  onPress={() => openCreateSheet('board')}
+                  style={({ pressed }) => [styles.emptyAddBtn, pressed && styles.btnPressed]}
+                >
+                  <Plus size={16} color="#FFFFFF" strokeWidth={2.4} />
+                  <Text style={styles.emptyAddBtnText}>Add Something</Text>
+                </Pressable>
+              </View>
             </View>
-          </View>
-        ) : (
-          /* Render Real User Pins in 2-column layout */
-          <View style={styles.pinsGrid}>
-            <View style={styles.gridColumn}>
-              {pins.filter((_, idx) => idx % 2 === 0).map((pin: Pin) => (
-                <PinCard key={pin.id} pin={pin} />
-              ))}
+          ) : (
+            /* Render Real User Pins in 2-column layout */
+            <View style={styles.pinsGrid}>
+              <View style={styles.gridColumn}>
+                {pins.filter((_, idx) => idx % 2 === 0).map((pin: Pin) => (
+                  <PinCard key={pin.id} pin={pin} />
+                ))}
+              </View>
+              <View style={styles.gridColumn}>
+                {pins.filter((_, idx) => idx % 2 === 1).map((pin: Pin) => (
+                  <PinCard key={pin.id} pin={pin} />
+                ))}
+              </View>
             </View>
-            <View style={styles.gridColumn}>
-              {pins.filter((_, idx) => idx % 2 === 1).map((pin: Pin) => (
-                <PinCard key={pin.id} pin={pin} />
-              ))}
-            </View>
-          </View>
-        )}
+          )}
+        </View>
       </ScrollView>
 
-      {/* 3. Floating Bottom Action Dock */}
+      {/* 3. Floating Bottom Action Dock (Add Pin, Share & Export) */}
       <View style={styles.floatingBottomDock}>
-        <Pressable
-          onPress={() => openCreateSheet('board')}
-          style={({ pressed }) => [styles.dockAddBtn, pressed && styles.btnPressed]}
-          hitSlop={8}
-        >
-          <Plus size={18} color="#FFFFFF" strokeWidth={2.4} />
-          <Text style={styles.dockAddText}>Add Pin</Text>
-        </Pressable>
+        <View style={styles.dockCapsule}>
+          {/* Add Pin Button */}
+          <Pressable
+            onPress={() => openCreateSheet('board')}
+            style={({ pressed }) => [styles.dockBtn, styles.dockBtnPrimary, pressed && styles.btnPressed]}
+            hitSlop={6}
+          >
+            <Plus size={16} color="#FFFFFF" strokeWidth={2.4} />
+            <Text style={styles.dockBtnPrimaryText}>Add</Text>
+          </Pressable>
+
+          {/* Share Button (WhatsApp, Instagram, etc.) */}
+          <Pressable
+            onPress={() => setIsShareOpen(true)}
+            style={({ pressed }) => [styles.dockBtn, styles.dockBtnSecondary, pressed && styles.btnPressed]}
+            hitSlop={6}
+          >
+            <Share2 size={15} color={colors.brand.purpleDark} />
+            <Text style={styles.dockBtnSecondaryText}>Share</Text>
+          </Pressable>
+
+          {/* Export PNG / JPG Button */}
+          <Pressable
+            onPress={() => setIsExportOpen(true)}
+            style={({ pressed }) => [styles.dockBtn, styles.dockBtnSecondary, pressed && styles.btnPressed]}
+            hitSlop={6}
+          >
+            <Download size={15} color={colors.brand.purpleDark} />
+            <Text style={styles.dockBtnSecondaryText}>Export</Text>
+          </Pressable>
+        </View>
       </View>
 
-      {/* Share Modal */}
-      <ShareModal visible={isShareOpen} onClose={() => setIsShareOpen(false)} />
+      {/* Share Modal (WhatsApp / Instagram / Copy Link) */}
+      <ShareModal
+        visible={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        title={activeBoard.title}
+        content={`${activeBoard.title} — ${activeBoard.subtitle || `${pins.length} memories`}`}
+      />
+
+      {/* Board Export Modal (PNG / JPG / Print) */}
+      <BoardExportModal
+        visible={isExportOpen}
+        board={activeBoard}
+        onClose={() => setIsExportOpen(false)}
+      />
     </View>
   );
 };
@@ -146,7 +185,11 @@ const styles = StyleSheet.create({
   },
   canvasContent: {
     padding: 14,
-    paddingBottom: 90,
+    paddingBottom: 100,
+  },
+  canvasWrapper: {
+    width: '100%',
+    borderRadius: 16,
   },
   pinsGrid: {
     flexDirection: 'row',
@@ -219,25 +262,51 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     zIndex: 50,
   },
-  dockAddBtn: {
+  dockCapsule: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.brand.purple,
-    borderRadius: 24,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
+    gap: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 28,
+    shadowColor: '#2D1B4E',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
   },
-  dockAddText: {
+  dockBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+  },
+  dockBtnPrimary: {
+    backgroundColor: colors.brand.purple,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  dockBtnPrimaryText: {
     fontFamily: typography.families.sans,
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  dockBtnSecondary: {
+    backgroundColor: '#F3E8FF',
+  },
+  dockBtnSecondaryText: {
+    fontFamily: typography.families.sans,
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: colors.brand.purpleDark,
   },
   btnPressed: {
     opacity: 0.85,

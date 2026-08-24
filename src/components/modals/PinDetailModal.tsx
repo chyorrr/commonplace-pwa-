@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Image, Platform } from 'react-native';
 import { useApp } from '../../context/AppContext';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
@@ -214,6 +214,22 @@ export const PinDetailModal: React.FC = () => {
                 />
                 <Text style={styles.detailMusicTitle}>{pin.songTitle}</Text>
                 <Text style={styles.detailMusicArtist}>{pin.artist}</Text>
+
+                {/* Spotify Embed Preview Player */}
+                {Platform.OS === 'web' && pin.spotifyUrl && spotifyService.parseSpotifyUrl(pin.spotifyUrl).trackId && (
+                  <View style={{ width: '100%', marginVertical: 12, borderRadius: 12, overflow: 'hidden' }}>
+                    <iframe
+                      src={`https://open.spotify.com/embed/track/${spotifyService.parseSpotifyUrl(pin.spotifyUrl).trackId}?utm_source=generator&theme=0`}
+                      width="100%"
+                      height="80"
+                      frameBorder="0"
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
+                      style={{ borderRadius: 12, border: 'none', width: '100%', height: 80 }}
+                    />
+                  </View>
+                )}
+
                 {!!pin.personalMemoryNote && (
                   <Text style={styles.detailMusicNote}>
                     "{pin.personalMemoryNote}"

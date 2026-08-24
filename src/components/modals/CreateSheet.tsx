@@ -78,6 +78,35 @@ export const CreateSheet: React.FC = () => {
   // Voice Note state
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [recordedDuration, setRecordedDuration] = useState(0);
+  const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | undefined>(undefined);
+  const [recordedWaveform, setRecordedWaveform] = useState<number[]>([0.3, 0.6, 0.8, 0.9, 0.6, 0.4, 0.7, 0.8, 0.5, 0.3]);
+
+  const handleToggleRecordAudio = async () => {
+    if (isRecordingAudio) {
+      setIsRecordingAudio(false);
+      const res = await speechAudioService.stopRecording(body);
+      if (res.audioUrl) {
+        setRecordedAudioUrl(res.audioUrl);
+      }
+      if (res.durationSeconds) {
+        setRecordedDuration(res.durationSeconds);
+      }
+      if (res.waveform && res.waveform.length > 0) {
+        setRecordedWaveform(res.waveform);
+      }
+      if (res.transcript && res.transcript.trim()) {
+        setBody(res.transcript.trim());
+      }
+    } else {
+      setIsRecordingAudio(true);
+      setRecordedDuration(0);
+      speechAudioService.startRecording(
+        (text) => text.trim() && setBody(text.trim()),
+        (wf) => wf && wf.length > 0 && setRecordedWaveform(wf.slice(-20)),
+        (sec) => setRecordedDuration(sec)
+      );
+    }
+  };
 
   const resetForm = () => {
     setSelectedType(null);
@@ -100,9 +129,16 @@ export const CreateSheet: React.FC = () => {
     setBoardSubtitle('');
     setBoardPasscode('');
     setIsLockedBoard(false);
+    setIsRecordingAudio(false);
+    setRecordedDuration(0);
+    setRecordedAudioUrl(undefined);
+    setRecordedWaveform([0.3, 0.6, 0.8, 0.9, 0.6, 0.4, 0.7, 0.8, 0.5, 0.3]);
   };
 
   const handleClose = () => {
+    if (isRecordingAudio) {
+      speechAudioService.stopRecording('');
+    }
     resetForm();
     closeCreateSheet();
   };
@@ -210,12 +246,13 @@ export const CreateSheet: React.FC = () => {
           ...pinData,
           type: 'voicenote',
           title: title.trim() || 'Voice Memo',
-          durationSeconds: recordedDuration || 12,
-          durationSec: recordedDuration || 12,
+          durationSeconds: recordedDuration || 8,
+          durationSec: recordedDuration || 8,
+          audioUrl: recordedAudioUrl,
+          waveform: recordedWaveform.length > 4 ? recordedWaveform : [0.3, 0.6, 0.8, 0.9, 0.6, 0.4, 0.7, 0.8, 0.5, 0.3],
           recordedDate: 'Today, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          transcriptExcerpt: body.trim() || 'Recorded voice note.',
-          transcription: body.trim() || 'Recorded voice note.',
-          waveform: [0.3, 0.6, 0.8, 0.9, 0.6, 0.4, 0.7, 0.8, 0.5, 0.3],
+          transcriptExcerpt: body.trim() || 'Voice Memo',
+          transcription: body.trim() || 'Voice Memo',
         };
         break;
     }
@@ -665,17 +702,39 @@ export const CreateSheet: React.FC = () => {
                     <View style={styles.voiceCard}>
                       <Mic size={24} color={colors.brand.purple} style={{ marginBottom: 6 }} />
                       <Text style={styles.voiceCardTitle}>
-                        {isRecordingAudio ? 'Recording Voice Memo...' : 'Ready to Record'}
+                        {isRecordingAudio
+                          ? `Recording... (00:${recordedDuration < 10 ? '0' : ''}${recordedDuration})`
+                          : recordedAudioUrl
+                          ? `Recorded (00:${recordedDuration < 10 ? '0' : ''}${recordedDuration}) ✓`
+                          : 'Ready to Record'}
                       </Text>
-                      <Text style={styles.voiceCardSub}>Tap below to start speaking</Text>
+                      <Text style={styles.voiceCardSub}>
+                        {isRecordingAudio
+                          ? 'Speak into your microphone...'
+                          : recordedAudioUrl
+                          ? 'Audio saved! Tap below to record again'
+                          : 'Tap below to start speaking'}
+                      </Text>
                       <Pressable
-                        onPress={() => setIsRecordingAudio(!isRecordingAudio)}
+                        onPress={handleToggleRecordAudio}
                         style={[styles.recordBtn, isRecordingAudio && styles.recordBtnActive]}
                       >
                         <Text style={styles.recordBtnText}>
-                          {isRecordingAudio ? 'Stop Recording' : 'Start Recording'}
+                          {isRecordingAudio ? 'Stop Recording' : recordedAudioUrl ? 'Record Again' : 'Start Recording'}
                         </Text>
                       </Pressable>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.inputLabel}>Caption / Transcription (Optional)</Text>
+                      <TextInput
+                        value={body}
+                        onChangeText={setBody}
+                        placeholder="Add a thought or note..."
+                        placeholderTextColor={colors.ink.faded}
+                        style={[styles.textInput, { minHeight: 60 }]}
+                        multiline
+                      />
                     </View>
                   </>
                 )}

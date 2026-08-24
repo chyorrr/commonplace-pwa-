@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Image, Pressable, Platform } from 'react-native';
 import { MusicPin as MusicPinType } from '../../types';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
@@ -15,6 +15,10 @@ interface MusicPinProps {
 export const MusicPin: React.FC<MusicPinProps> = ({ pin, onPress }) => {
   const { currentlyPlayingAudioId, togglePlayAudio, audioProgress } = useApp();
   const isPlaying = currentlyPlayingAudioId === pin.id;
+
+  const spotifyTrackId = pin.spotifyUrl
+    ? spotifyService.parseSpotifyUrl(pin.spotifyUrl).trackId
+    : null;
 
   return (
     <PaperCard
@@ -43,7 +47,7 @@ export const MusicPin: React.FC<MusicPinProps> = ({ pin, onPress }) => {
 
         {/* Spotify badge */}
         <Pressable
-          onPress={(e) => {
+          onPress={(e: any) => {
             e.stopPropagation?.();
             spotifyService.openInSpotify(pin.spotifyUrl, pin.spotifyUri);
           }}
@@ -64,30 +68,45 @@ export const MusicPin: React.FC<MusicPinProps> = ({ pin, onPress }) => {
         </Text>
       </View>
 
-      {/* Interactive Player Controls */}
-      <View style={styles.playerBar}>
-        <Pressable
-          onPress={(e: any) => {
-            e.stopPropagation?.();
-            togglePlayAudio(pin.id);
-          }}
-          style={({ pressed }: { pressed: boolean }) => [styles.playBtn, pressed && { opacity: 0.7 }]}
-        >
-          <Text style={styles.playBtnText}>{isPlaying ? 'pause' : 'play'}</Text>
-        </Pressable>
-
-        {/* Mini progress wave */}
-        <View style={styles.progressTrack}>
-          <View
-            style={[
-              styles.progressBar,
-              { width: `${isPlaying ? audioProgress * 100 : 0}%` },
-            ]}
+      {/* Spotify Embedded Web Preview Player if valid track ID */}
+      {Platform.OS === 'web' && spotifyTrackId ? (
+        <View style={styles.spotifyEmbedWrapper}>
+          <iframe
+            src={`https://open.spotify.com/embed/track/${spotifyTrackId}?utm_source=generator&theme=0`}
+            width="100%"
+            height="80"
+            frameBorder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+            style={{ borderRadius: 10, border: 'none', width: '100%', height: 80 }}
           />
         </View>
+      ) : (
+        /* Interactive Player Controls */
+        <View style={styles.playerBar}>
+          <Pressable
+            onPress={(e: any) => {
+              e.stopPropagation?.();
+              spotifyService.openInSpotify(pin.spotifyUrl, pin.spotifyUri);
+            }}
+            style={({ pressed }: { pressed: boolean }) => [styles.playBtn, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={styles.playBtnText}>{isPlaying ? 'pause' : 'play'}</Text>
+          </Pressable>
 
-        {pin.duration && <Text style={styles.durationText}>{pin.duration}</Text>}
-      </View>
+          {/* Mini progress wave */}
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressBar,
+                { width: `${isPlaying ? audioProgress * 100 : 0}%` },
+              ]}
+            />
+          </View>
+
+          {pin.duration && <Text style={styles.durationText}>{pin.duration}</Text>}
+        </View>
+      )}
 
       {/* Personal memory reflection */}
       {!!pin.personalMemoryNote && (
@@ -182,6 +201,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.ink.secondary,
     marginTop: 2,
+  },
+  spotifyEmbedWrapper: {
+    width: '100%',
+    marginVertical: 4,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   playerBar: {
     flexDirection: 'row',
