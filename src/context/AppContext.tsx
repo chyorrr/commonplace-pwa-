@@ -2,6 +2,9 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { AtmosphereType, Board, CustomSticker, DeskItem, FreeformTransform, MemorySnippet, Pin, PinType, ReminderItem } from '../types';
 import { initialBoards, initialDeskItems, initialMemory, initialStickers } from '../data/initialData';
 import { reminderService } from '../services/reminderService';
+import { dbStorage } from '../services/dbStorage';
+import { syncService } from '../services/syncService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type ScreenTab = 'home' | 'schedule' | 'desk' | 'favorites' | 'search';
 
@@ -16,6 +19,12 @@ export interface UserProfile {
 export type ThemeMode = 'sakura' | 'lilac' | 'matcha' | 'butter' | 'peach' | 'sky' | 'dark';
 
 export interface AppContextType {
+  // Network & PWA Status
+  isOnline: boolean;
+  isInstallModalOpen: boolean;
+  openInstallModal: () => void;
+  closeInstallModal: () => void;
+
   // Auth state
   user: UserProfile | null;
   savedAccounts: UserProfile[];
@@ -58,7 +67,6 @@ export interface AppContextType {
   addPin: (boardId: string, pinData: Omit<Pin, 'id' | 'createdAt'>) => Pin;
   updatePin: (arg1: string, arg2: string | Partial<Pin>, arg3?: Partial<Pin>) => void;
   deletePin: (arg1: string, arg2?: string) => void;
-  togglePinFavorite: (arg1: string, arg2?: string) => void;
   toggleFavoritePin: (arg1: string, arg2?: string) => void;
   toggleChecklistItem: (arg1: string, arg2: string, arg3?: string) => void;
   updatePinFreeformTransform: (boardId: string, pinId: string, transform: Partial<FreeformTransform>) => void;
@@ -134,94 +142,46 @@ export interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  USER: 'commonplace_user_v6',
-  BOARDS: 'commonplace_boards_v6',
-  DESK: 'commonplace_desk_v6',
-  STICKERS: 'commonplace_stickers_v6',
-  REMINDERS: 'commonplace_reminders_v6',
-  THEME: 'commonplace_theme_v6',
-  ONBOARDING_SEEN: 'commonplace_onboarding_v6',
+  USER: 'commonplace_user_v7',
+  BOARDS: 'commonplace_boards_v7',
+  DESK: 'commonplace_desk_v7',
+  STICKERS: 'commonplace_stickers_v7',
+  REMINDERS: 'commonplace_reminders_v7',
+  THEME: 'commonplace_theme_v7',
+  ACCOUNTS: 'commonplace_accounts_v7',
+  GUIDE_SEEN: 'commonplace_guide_shown_v7',
 };
 
 const memoryStore: Record<string, string> = {};
 const safeStorage = {
   getItem: (key: string): string | null => {
-    try {
-      if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
-        return window.localStorage.getItem(key);
-      }
-      return memoryStore[key] || null;
-    } catch (e) {
-      return memoryStore[key] || null;
-    }
+    return dbStorage.getItemSync(key);
   },
   setItem: (key: string, value: string): void => {
-    try {
-      if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
-        window.localStorage.setItem(key, value);
-      } else {
-        memoryStore[key] = value;
-      }
-    } catch (e) {
-      memoryStore[key] = value;
-    }
+    dbStorage.setItemSync(key, value);
   },
   removeItem: (key: string): void => {
-    try {
-      if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
-        window.localStorage.removeItem(key);
-      } else {
-        delete memoryStore[key];
-      }
-    } catch (e) {
-      delete memoryStore[key];
-    }
+    dbStorage.removeItem(key).catch(() => {});
   },
 };
 
-const defaultReminders: ReminderItem[] = [
-  {
-    id: 'rem-1',
-    title: 'Web Design',
-    category: 'Client project',
-    date: new Date().toISOString().split('T')[0],
-    startTime: '10:00 AM',
-    endTime: '02:00 PM',
-    status: 'completed',
-    progressPercent: 100,
-    color: '#D4F5C9', // pastel matcha
-    notificationEnabled: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'rem-2',
-    title: 'Family Program',
-    category: 'Family task',
-    date: new Date().toISOString().split('T')[0],
-    startTime: '03:00 PM',
-    endTime: '04:00 PM',
-    status: 'upcoming',
-    progressPercent: 0,
-    color: '#CBEBFB', // pastel cyan
-    notificationEnabled: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 'rem-3',
-    title: 'Market Research',
-    category: 'Company task',
-    date: new Date().toISOString().split('T')[0],
-    startTime: '06:00 PM',
-    endTime: '08:00 PM',
-    status: 'running',
-    progressPercent: 72,
-    color: '#E5DCFC', // pastel lilac
-    notificationEnabled: true,
-    createdAt: new Date().toISOString(),
-  },
-];
+const defaultReminders: ReminderItem[] = [];
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // PWA & Network Connectivity State
+  const [isOnline, setIsOnline] = useState<boolean>(() => syncService.isOnline);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = syncService.subscribe((online) => {
+      setIsOnline(online);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const openInstallModal = () => setIsInstallModalOpen(true);
+  const closeInstallModal = () => setIsInstallModalOpen(false);
+
   // 1. Auth & Accounts State
   const [savedAccounts, setSavedAccounts] = useState<UserProfile[]>(() => {
     const raw = safeStorage.getItem('commonplace_accounts_v6');
@@ -248,12 +208,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const raw = safeStorage.getItem(STORAGE_KEYS.USER);
     if (raw) {
       try {
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.id) return parsed;
       } catch (e) {
         return null;
       }
     }
-    return null; // Show Sign In / Create Account screen first!
+    return null;
   });
 
   const login = (newUser: UserProfile) => {
@@ -264,17 +225,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const updated = exists
         ? prev.map((a) => (a.id === newUser.id || a.email === newUser.email ? newUser : a))
         : [newUser, ...prev];
-      safeStorage.setItem('commonplace_accounts_v6', JSON.stringify(updated));
+      safeStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(updated));
       return updated;
     });
 
     // Automatically show the User Guide modal the first time any user signs in
-    const hasSeenGuide = safeStorage.getItem('commonplace_guide_shown_v3');
+    const hasSeenGuide = safeStorage.getItem(STORAGE_KEYS.GUIDE_SEEN);
     if (!hasSeenGuide) {
       setTimeout(() => {
         setIsGuideOpen(true);
       }, 400);
-      safeStorage.setItem('commonplace_guide_shown_v3', 'true');
+      safeStorage.setItem(STORAGE_KEYS.GUIDE_SEEN, 'true');
     }
   };
 
@@ -435,6 +396,48 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       })
     );
   };
+
+  // Hydrate AsyncStorage data on native mobile so login, theme, and boards persist permanently
+  useEffect(() => {
+    const hydrateAsyncData = async () => {
+      try {
+        const storedTheme = await AsyncStorage.getItem(STORAGE_KEYS.THEME);
+        if (storedTheme) {
+          setThemeModeState(storedTheme as ThemeMode);
+        }
+        const storedUser = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          if (parsed && parsed.id) {
+            setUser(parsed);
+          }
+        }
+        const storedAccounts = await AsyncStorage.getItem(STORAGE_KEYS.ACCOUNTS);
+        if (storedAccounts) {
+          setSavedAccounts(JSON.parse(storedAccounts));
+        }
+        const storedBoards = await AsyncStorage.getItem(STORAGE_KEYS.BOARDS);
+        if (storedBoards) {
+          setBoards(JSON.parse(storedBoards));
+        }
+        const storedDesk = await AsyncStorage.getItem(STORAGE_KEYS.DESK);
+        if (storedDesk) {
+          setDeskItems(JSON.parse(storedDesk));
+        }
+        const storedStickers = await AsyncStorage.getItem(STORAGE_KEYS.STICKERS);
+        if (storedStickers) {
+          setStickers(JSON.parse(storedStickers));
+        }
+        const storedReminders = await AsyncStorage.getItem(STORAGE_KEYS.REMINDERS);
+        if (storedReminders) {
+          setReminders(JSON.parse(storedReminders));
+        }
+      } catch (err) {
+        console.warn('Native storage hydration notice:', err);
+      }
+    };
+    hydrateAsyncData();
+  }, []);
 
   // 7. Modals
   const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
@@ -817,12 +820,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         changeBoardAtmosphere,
         isFreeformMode,
         setIsFreeformMode,
-        updatePinFreeformTransform: updatePinPosition,
         updatePinPosition,
+        updatePinFreeformTransform: updatePinPosition,
         addPin,
         updatePin,
         deletePin,
-        togglePinFavorite: toggleFavoritePin,
         toggleFavoritePin,
         toggleChecklistItem,
         deskItems,
@@ -867,6 +869,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         isGuideOpen,
         openGuide,
         closeGuide,
+        isOnline,
+        isInstallModalOpen,
+        openInstallModal,
+        closeInstallModal,
         isSettingsOpen,
         openSettings,
         closeSettings,

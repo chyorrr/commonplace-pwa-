@@ -17,6 +17,7 @@ import { GuideModal } from './components/modals/GuideModal';
 import { NoteEditorModal } from './components/modals/NoteEditorModal';
 import { VoiceNoteModal } from './components/modals/VoiceNoteModal';
 import { SettingsModal } from './components/modals/SettingsModal';
+import { AddToHomeScreenModal } from './components/common/AddToHomeScreenModal';
 import { colors } from './theme/colors';
 
 const MainNavigator: React.FC = () => {
@@ -31,6 +32,8 @@ const MainNavigator: React.FC = () => {
     closeNoteEditor,
     isVoiceNoteOpen,
     closeVoiceNote,
+    isInstallModalOpen,
+    closeInstallModal,
   } = useApp();
 
   const renderActiveScreen = () => {
@@ -71,9 +74,10 @@ const MainNavigator: React.FC = () => {
       <StickerStudioModal />
       <PrivacyLockModal />
 
-      {/* Interactive Guide & Working Settings */}
+      {/* Interactive Guide, Settings & iOS Add To Home Screen Helper */}
       <GuideModal visible={isGuideOpen} onClose={closeGuide} />
       <SettingsModal visible={isSettingsOpen} onClose={closeSettings} />
+      <AddToHomeScreenModal visible={isInstallModalOpen} onClose={closeInstallModal} />
     </View>
   );
 };
@@ -189,6 +193,7 @@ const styles = StyleSheet.create({
     maxWidth: 500, // Max width for crisp phone aesthetic on web
     height: '100%',
     backgroundColor: 'transparent',
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0,
   },
   appViewport: {
     flex: 1,

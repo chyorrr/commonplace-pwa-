@@ -11,6 +11,8 @@ interface PhotoPinProps {
 }
 
 export const PhotoPin: React.FC<PhotoPinProps> = ({ pin, onPress }) => {
+  const photoUri = pin.imageUrl || (pin as any).url;
+
   return (
     <PaperCard
       rotation={pin.rotation}
@@ -22,17 +24,19 @@ export const PhotoPin: React.FC<PhotoPinProps> = ({ pin, onPress }) => {
       style={styles.polaroidContainer}
     >
       {/* Photo Frame */}
-      <View style={styles.imageWrapper}>
-        <Image
-          source={{ uri: pin.imageUrl }}
-          style={styles.image}
-          resizeMode="cover"
-        />
+      <View style={styles.imageWrapper} pointerEvents="none">
+        {photoUri ? (
+          <Image
+            source={{ uri: photoUri }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+        ) : null}
       </View>
 
       {/* Handwritten Caption & Date */}
       {Boolean(pin.caption || pin.handwrittenDate || pin.location) && (
-        <View style={styles.captionArea}>
+        <View style={styles.captionArea} pointerEvents="none">
           {!!pin.caption && (
             <Text style={styles.captionText}>{pin.caption}</Text>
           )}

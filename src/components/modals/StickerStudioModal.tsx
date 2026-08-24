@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Modal, Pressable, Image, TextInput, ScrollView 
 import { useApp } from '../../context/AppContext';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
-import { X, Upload, Check, Trash2, Stamp, Sparkles, Scissors, CircleDot, Maximize2 } from 'lucide-react-native';
+import { X, Upload, Check, Trash2, Stamp, Palette, Scissors, CircleDot, Maximize2 } from 'lucide-react-native';
 import { Board, CustomSticker, Pin } from '../../types';
 import { DeviceImagePicker } from '../common/DeviceImagePicker';
 import { Tape } from '../common/Tape';
@@ -288,7 +288,7 @@ export const StickerStudioModal: React.FC = () => {
                       style={[styles.stylePill, stickerStyle === 'die-cut' && styles.stylePillActive]}
                     >
                       <Text style={[styles.stylePillText, stickerStyle === 'die-cut' && styles.stylePillTextActive]}>
-                        ✂️ Die-Cut
+                        Die-Cut Border
                       </Text>
                     </Pressable>
                     <Pressable
@@ -296,7 +296,7 @@ export const StickerStudioModal: React.FC = () => {
                       style={[styles.stylePill, stickerStyle === 'glow' && styles.stylePillActive]}
                     >
                       <Text style={[styles.stylePillText, stickerStyle === 'glow' && styles.stylePillTextActive]}>
-                        🌸 Pastel Glow
+                        Pastel Glow
                       </Text>
                     </Pressable>
                     <Pressable
@@ -304,7 +304,7 @@ export const StickerStudioModal: React.FC = () => {
                       style={[styles.stylePill, stickerStyle === 'stamp' && styles.stylePillActive]}
                     >
                       <Text style={[styles.stylePillText, stickerStyle === 'stamp' && styles.stylePillTextActive]}>
-                        🏷️ Stamp Edge
+                        Postage Stamp
                       </Text>
                     </Pressable>
                     <Pressable
@@ -312,7 +312,7 @@ export const StickerStudioModal: React.FC = () => {
                       style={[styles.stylePill, stickerStyle === 'badge' && styles.stylePillActive]}
                     >
                       <Text style={[styles.stylePillText, stickerStyle === 'badge' && styles.stylePillTextActive]}>
-                        ⚪ Round Badge
+                        Circular Badge
                       </Text>
                     </Pressable>
                   </View>
@@ -424,10 +424,10 @@ export const StickerStudioModal: React.FC = () => {
                 <Text style={styles.fieldLabel}>4. Contour Cut Outline</Text>
                 <View style={styles.sizeSelectorRow}>
                   {[
-                    { id: 'die-cut', label: '✂️ Die-Cut' },
-                    { id: 'glow', label: '🌸 Glow' },
-                    { id: 'stamp', label: '🏷️ Stamp' },
-                    { id: 'badge', label: '⚪ Badge' },
+                    { id: 'die-cut', label: 'Die-Cut' },
+                    { id: 'glow', label: 'Pastel Glow' },
+                    { id: 'stamp', label: 'Stamp' },
+                    { id: 'badge', label: 'Badge' },
                   ].map((cnt) => (
                     <Pressable
                       key={cnt.id}

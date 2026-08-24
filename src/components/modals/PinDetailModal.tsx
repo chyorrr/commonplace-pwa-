@@ -23,8 +23,6 @@ export const PinDetailModal: React.FC = () => {
 
   const [isMoveMenuOpen, setIsMoveMenuOpen] = useState(false);
 
-  if (!activePinDetail) return null;
-
   const pin = activePinDetail;
 
   const handleClose = () => {
@@ -33,15 +31,24 @@ export const PinDetailModal: React.FC = () => {
   };
 
   const handleMoveToBoard = (targetBoardId: string) => {
+    if (!pin) return;
     const { id, createdAt, ...pinRest } = pin;
     addPin(targetBoardId, pinRest);
     deletePin(pin.id);
     handleClose();
   };
 
+  if (!pin) {
+    return (
+      <Modal visible={false} transparent>
+        <View />
+      </Modal>
+    );
+  }
+
   return (
     <Modal
-      visible={!!activePinDetail}
+      visible={Boolean(activePinDetail)}
       transparent
       animationType="fade"
       onRequestClose={handleClose}
@@ -139,34 +146,6 @@ export const PinDetailModal: React.FC = () => {
 
           {/* Detail Scroll Content */}
           <ScrollView style={styles.scrollBody} showsVerticalScrollIndicator={false}>
-            {/* Photo Render */}
-            {pin.type === 'photo' && (
-              <View style={styles.photoBlock}>
-                <Image
-                  source={{ uri: pin.imageUrl }}
-                  style={styles.fullPhoto}
-                  resizeMode="contain"
-                />
-                {!!pin.caption && (
-                  <Text style={styles.detailCaption}>"{pin.caption}"</Text>
-                )}
-                <View style={styles.photoMetaRow}>
-                  {!!pin.location && (
-                    <View style={styles.metaBadge}>
-                      <MapPin size={11} color={colors.ink.tertiary} />
-                      <Text style={styles.metaBadgeText}>{pin.location}</Text>
-                    </View>
-                  )}
-                  {!!pin.handwrittenDate && (
-                    <View style={styles.metaBadge}>
-                      <Calendar size={11} color={colors.ink.tertiary} />
-                      <Text style={styles.metaBadgeText}>{pin.handwrittenDate}</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            )}
-
             {/* Text Pin Render */}
             {pin.type === 'text' && (
               <View style={styles.textBlock}>
@@ -302,6 +281,32 @@ export const PinDetailModal: React.FC = () => {
               </View>
             )}
 
+            {/* Photo Pin Render */}
+            {pin.type === 'photo' && (
+              <View style={styles.photoBlock}>
+                {Boolean(pin.imageUrl || (pin as any).url) && (
+                  <View style={styles.detailPhotoFrame}>
+                    <Image
+                      source={{ uri: pin.imageUrl || (pin as any).url }}
+                      style={styles.detailPhotoImg}
+                      resizeMode="cover"
+                    />
+                  </View>
+                )}
+                {Boolean(pin.caption) && (
+                  <Text style={styles.detailPhotoCaption}>{pin.caption}</Text>
+                )}
+                <View style={styles.photoMetaRow}>
+                  {Boolean(pin.location) && (
+                    <Text style={styles.detailLocation}>{pin.location}</Text>
+                  )}
+                  {Boolean(pin.handwrittenDate || (pin as any).date) && (
+                    <Text style={styles.detailDateText}>{pin.handwrittenDate || (pin as any).date}</Text>
+                  )}
+                </View>
+              </View>
+            )}
+
             {/* Share to WhatsApp & Instagram & Universal Share */}
             <View style={styles.shareSection}>
               <Text style={styles.shareHeading}>share this note</Text>
@@ -433,38 +438,6 @@ const styles = StyleSheet.create({
   },
   scrollBody: {
     maxHeight: 520,
-  },
-  photoBlock: {
-    alignItems: 'center',
-  },
-  fullPhoto: {
-    width: '100%',
-    height: 280,
-    borderRadius: 4,
-    backgroundColor: '#EBE5DC',
-  },
-  detailCaption: {
-    fontFamily: typography.families.handwritten,
-    fontSize: 18,
-    lineHeight: 22,
-    color: colors.ink.handwritten,
-    textAlign: 'center',
-    marginTop: 12,
-  },
-  photoMetaRow: {
-    flexDirection: 'row',
-    gap: 14,
-    marginTop: 8,
-  },
-  metaBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaBadgeText: {
-    fontFamily: typography.families.sans,
-    fontSize: 11,
-    color: colors.ink.tertiary,
   },
   textBlock: {
     paddingVertical: 8,
@@ -746,5 +719,45 @@ const styles = StyleSheet.create({
     fontFamily: typography.families.handwritten,
     fontSize: 13,
     color: colors.ink.faded,
+  },
+  photoBlock: {
+    paddingVertical: 6,
+  },
+  detailPhotoFrame: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#EAE5DC',
+    marginBottom: 12,
+  },
+  detailPhotoImg: {
+    width: '100%',
+    height: '100%',
+  },
+  detailPhotoCaption: {
+    fontFamily: typography.families.handwritten,
+    fontSize: 19,
+    lineHeight: 23,
+    color: colors.ink.handwritten,
+    marginBottom: 6,
+  },
+  photoMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  detailLocation: {
+    fontFamily: typography.families.sans,
+    fontSize: 11,
+    color: colors.ink.tertiary,
+    textTransform: 'lowercase',
+  },
+  detailDateText: {
+    fontFamily: typography.families.handwritten,
+    fontSize: 15,
+    color: colors.ink.handwrittenFaded,
+    marginLeft: 'auto',
   },
 });

@@ -21,7 +21,7 @@ export const CollagePin: React.FC<CollagePinProps> = ({ pin, onPress }) => {
       stickers={pin.stickers}
       style={styles.collageCard}
     >
-      <View style={styles.collageGrid}>
+      <View style={styles.collageGrid} pointerEvents="none">
         {pin.items.map((item, idx) => (
           <View
             key={item.id || idx}

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Modal, Pressable, Image } from 'react-native';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { X, MessageCircle, Instagram, MoreHorizontal, FileImage, FileText, Type, Link2, Check } from 'lucide-react-native';
+import { shareService } from '../../services/shareService';
 
 interface ShareModalProps {
   visible: boolean;
@@ -57,28 +58,55 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
           {/* Social Row */}
           <View style={styles.socialRow}>
-            <Pressable style={styles.socialItem}>
+            <Pressable
+              style={({ pressed }) => [styles.socialItem, pressed && { opacity: 0.75 }]}
+              onPress={() => {
+                shareService.shareToWhatsApp(`${title ? `*${title}*\n\n` : ''}${content}\n\n— commonplace scrapbook`);
+                onClose();
+              }}
+            >
               <View style={[styles.socialCircle, { backgroundColor: '#25D366' }]}>
                 <MessageCircle size={22} color="#FFFFFF" />
               </View>
               <Text style={styles.socialLabel}>whatsapp</Text>
             </Pressable>
 
-            <Pressable style={styles.socialItem}>
+            <Pressable
+              style={({ pressed }) => [styles.socialItem, pressed && { opacity: 0.75 }]}
+              onPress={() => {
+                shareService.shareToInstagram(`${title ? `*${title}*\n\n` : ''}${content}\n\n— commonplace scrapbook`);
+                onClose();
+              }}
+            >
               <View style={[styles.socialCircle, { backgroundColor: '#E1306C' }]}>
                 <Instagram size={22} color="#FFFFFF" />
               </View>
               <Text style={styles.socialLabel}>instagram dm</Text>
             </Pressable>
 
-            <Pressable style={styles.socialItem}>
+            <Pressable
+              style={({ pressed }) => [styles.socialItem, pressed && { opacity: 0.75 }]}
+              onPress={() => {
+                shareService.shareToInstagram(`${title ? `*${title}*\n\n` : ''}${content}\n\n— commonplace scrapbook`);
+                onClose();
+              }}
+            >
               <View style={[styles.socialCircle, { backgroundColor: '#C13584' }]}>
                 <Instagram size={22} color="#FFFFFF" />
               </View>
               <Text style={styles.socialLabel}>instagram story</Text>
             </Pressable>
 
-            <Pressable style={styles.socialItem}>
+            <Pressable
+              style={({ pressed }) => [styles.socialItem, pressed && { opacity: 0.75 }]}
+              onPress={() => {
+                shareService.shareNative({
+                  title: title || 'Commonplace Scrapbook',
+                  message: `${title ? `${title}\n\n` : ''}${content}\n\n— commonplace scrapbook`,
+                });
+                onClose();
+              }}
+            >
               <View style={[styles.socialCircle, { backgroundColor: '#F3F4F6' }]}>
                 <MoreHorizontal size={22} color={colors.ink.secondary} />
               </View>

@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 
 export const compressImageFile = (
   file: File,
@@ -97,6 +96,7 @@ export const pickImageFromDevice = async (
   // On Native (Expo Go on iOS / Android)
   if (Platform.OS !== 'web') {
     try {
+      const ImagePicker = require('expo-image-picker');
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         alert('Permission to access photos is needed.');

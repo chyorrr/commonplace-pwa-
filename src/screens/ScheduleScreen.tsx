@@ -22,6 +22,14 @@ import {
 import { reminderService } from '../services/reminderService';
 import { ReminderItem } from '../types';
 
+const getTodayDateStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const ScheduleScreen: React.FC = () => {
   const { 
     reminders, 
@@ -38,10 +46,8 @@ export const ScheduleScreen: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth()); // 0-11
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState<boolean>(false);
 
-  // Selected Date string (YYYY-MM-DD)
-  const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
-    return now.toISOString().split('T')[0];
-  });
+  // Selected Date string (YYYY-MM-DD synced to current day)
+  const [selectedDateStr, setSelectedDateStr] = useState<string>(getTodayDateStr);
 
   // Modal State for New Task / Reminder
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);

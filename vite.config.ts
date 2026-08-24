@@ -13,10 +13,15 @@ export default defineConfig({
   define: {
     global: 'window',
     __DEV__: JSON.stringify(true),
+    'process.env': {},
+    process: { env: {} },
   },
   optimizeDeps: {
     esbuildOptions: {
       resolveExtensions: ['.web.js', '.web.jsx', '.web.ts', '.web.tsx', '.js', '.jsx', '.ts', '.tsx'],
+      define: {
+        global: 'window',
+      },
     },
   },
   server: {
@@ -24,4 +29,3 @@ export default defineConfig({
     host: true,
   },
 });
-

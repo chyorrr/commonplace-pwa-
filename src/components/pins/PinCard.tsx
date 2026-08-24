@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, StyleSheet, Pressable, Animated } from 'react-native';
 import { Pin } from '../../types';
 import { PhotoPin } from './PhotoPin';
 import { TextPin } from './TextPin';
@@ -12,9 +12,7 @@ import { LinkPin } from './LinkPin';
 import { CollagePin } from './CollagePin';
 import { JournalPin } from './JournalPin';
 import { useApp } from '../../context/AppContext';
-import { colors } from '../../theme/colors';
-import { typography } from '../../theme/typography';
-import { Text } from 'react-native';
+import { Heart } from 'lucide-react-native';
 
 interface PinCardProps {
   pin: Pin;
@@ -25,15 +23,63 @@ interface PinCardProps {
 export const PinCard: React.FC<PinCardProps> = ({
   pin,
   onPress,
-  showFavoriteBadge = true,
 }) => {
   const { setActivePinDetail, toggleFavoritePin } = useApp();
+  const lastTapRef = useRef<number>(0);
+  const timerRef = useRef<any>(null);
+
+  // Heart pop animation for double click / double tap
+  const [showHeartPop, setShowHeartPop] = useState(false);
+  const heartScale = useRef(new Animated.Value(0)).current;
+  const heartOpacity = useRef(new Animated.Value(0)).current;
+
+  const triggerHeartAnimation = () => {
+    setShowHeartPop(true);
+    heartScale.setValue(0.4);
+    heartOpacity.setValue(1);
+
+    Animated.parallel([
+      Animated.spring(heartScale, {
+        toValue: 1.35,
+        friction: 3,
+        tension: 120,
+        useNativeDriver: true,
+      }),
+      Animated.timing(heartOpacity, {
+        toValue: 0,
+        duration: 650,
+        delay: 150,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowHeartPop(false);
+    });
+  };
 
   const handleCardPress = () => {
-    if (onPress) {
-      onPress();
+    const now = Date.now();
+    const DOUBLE_PRESS_DELAY = 260;
+
+    if (lastTapRef.current && now - lastTapRef.current < DOUBLE_PRESS_DELAY) {
+      // Double tap / double click -> Toggle Favorite & Show Heart Pop
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      lastTapRef.current = 0;
+      toggleFavoritePin(pin.id);
+      triggerHeartAnimation();
     } else {
-      setActivePinDetail(pin);
+      lastTapRef.current = now;
+      timerRef.current = setTimeout(() => {
+        // Single tap / click -> Open detail modal instantly
+        lastTapRef.current = 0;
+        if (onPress) {
+          onPress();
+        } else {
+          setActivePinDetail(pin);
+        }
+      }, DOUBLE_PRESS_DELAY);
     }
   };
 
@@ -68,22 +114,29 @@ export const PinCard: React.FC<PinCardProps> = ({
     <View style={styles.cardWrapper}>
       {renderContent()}
 
-      {/* Floating favorite button */}
-      {Boolean(showFavoriteBadge) && (
-        <Pressable
-          onPress={(e: any) => {
-            e.stopPropagation?.();
-            toggleFavoritePin(pin.id);
-          }}
-          style={({ pressed }: { pressed: boolean }) => [
-            styles.favButton,
-            pin.isFavorite && styles.favButtonActive,
-            pressed && { opacity: 0.7 },
+      {/* Discrete Favorite Indicator Heart (No text) */}
+      {Boolean(pin.isFavorite) && (
+        <View style={styles.favHeartIcon} pointerEvents="none">
+          <Heart size={14} color="#E11D48" fill="#E11D48" />
+        </View>
+      )}
+
+      {/* Animated Heart Pop on Double-Click / Double-Tap */}
+      {showHeartPop && (
+        <Animated.View
+          style={[
+            styles.heartPopWrapper,
+            {
+              opacity: heartOpacity,
+              transform: [{ scale: heartScale }],
+            },
           ]}
-          hitSlop={6}
+          pointerEvents="none"
         >
-          <Text style={[styles.favButtonText, pin.isFavorite && styles.favButtonTextActive]}>fav</Text>
-        </Pressable>
+          <View style={styles.heartPopCircle}>
+            <Heart size={38} color="#E11D48" fill="#E11D48" />
+          </View>
+        </Animated.View>
       )}
     </View>
   );
@@ -94,34 +147,44 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginVertical: 4,
   },
-  favButton: {
+  favHeartIcon: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 3,
   },
-  favButtonActive: {
-    backgroundColor: '#FFF',
+  heartPopWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 99,
   },
-  favButtonText: {
-    fontFamily: typography.families.sans,
-    fontSize: 9,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    color: colors.ink.tertiary,
-  },
-  favButtonTextActive: {
-    color: colors.accents.terracotta,
+  heartPopCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#E11D48',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
   },
 });

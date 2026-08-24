@@ -4,7 +4,6 @@ import { compressImageFile } from '../../utils/imagePicker';
 import { Camera, Check } from 'lucide-react-native';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
-import * as ImagePicker from 'expo-image-picker';
 
 interface DeviceImagePickerProps {
   onImageSelected: (base64Url: string, fileName?: string) => void;
@@ -28,6 +27,7 @@ export const DeviceImagePicker: React.FC<DeviceImagePickerProps> = ({
   const handleNativePress = async () => {
     try {
       setIsLoading(true);
+      const ImagePicker = require('expo-image-picker');
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         alert('Permission to access photos is needed.');

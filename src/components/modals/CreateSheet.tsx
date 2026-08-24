@@ -136,10 +136,10 @@ export const CreateSheet: React.FC = () => {
         pinData = {
           ...pinData,
           type: 'photo',
-          url: imageUrl,
-          caption: caption || undefined,
-          date: handwrittenDate || undefined,
-          location: location || undefined,
+          imageUrl: imageUrl,
+          caption: caption.trim() || undefined,
+          handwrittenDate: handwrittenDate.trim() || undefined,
+          location: location.trim() || undefined,
         };
         break;
 
@@ -210,8 +210,11 @@ export const CreateSheet: React.FC = () => {
           ...pinData,
           type: 'voicenote',
           title: title.trim() || 'Voice Memo',
+          durationSeconds: recordedDuration || 12,
           durationSec: recordedDuration || 12,
-          transcription: body.trim() || undefined,
+          recordedDate: 'Today, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          transcriptExcerpt: body.trim() || 'Recorded voice note.',
+          transcription: body.trim() || 'Recorded voice note.',
           waveform: [0.3, 0.6, 0.8, 0.9, 0.6, 0.4, 0.7, 0.8, 0.5, 0.3],
         };
         break;

@@ -1,10 +1,10 @@
 import { Platform } from 'react-native';
 import { ReminderItem } from '../types';
+import { getServiceWorkerRegistration } from '../serviceWorkerRegistration';
 
 // Safely lazy-load expo-notifications to prevent Expo Go SDK 53+ Android red-screen error
 let ExpoNotifications: any = null;
 try {
-  // On web or in Expo Go Android without native push module, require won't crash the bundle
   if (Platform.OS !== 'web') {
     ExpoNotifications = require('expo-notifications');
     if (ExpoNotifications?.setNotificationHandler) {
@@ -20,7 +20,6 @@ try {
     }
   }
 } catch (e) {
-  // Expo Go notice safely caught
   console.log('Expo Go notification fallback active');
 }
 
@@ -89,8 +88,9 @@ class ReminderService {
 
   public playChimeSound() {
     try {
-      if (typeof window !== 'undefined' && (window as any).AudioContext) {
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      if (typeof window !== 'undefined' && ((window as any).AudioContext || (window as any).webkitAudioContext)) {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        const audioCtx = new AudioCtx();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.connect(gain);
@@ -113,7 +113,7 @@ class ReminderService {
   public async sendNotification(title: string, body: string, icon?: string): Promise<boolean> {
     this.playChimeSound();
 
-    // 1. Native iOS / Android Notification via Expo Notifications (if available)
+    // 1. Native iOS / Android Notification via Expo Notifications (if in native shell)
     if (Platform.OS !== 'web' && ExpoNotifications?.scheduleNotificationAsync) {
       try {
         await ExpoNotifications.scheduleNotificationAsync({
@@ -123,7 +123,7 @@ class ReminderService {
             sound: 'default',
             badge: 1,
           },
-          trigger: null, // deliver immediately
+          trigger: null,
         });
         return true;
       } catch (err) {
@@ -131,12 +131,31 @@ class ReminderService {
       }
     }
 
-    // 2. Web Browser Notification
+    // 2. iOS 16.4+ Standalone PWA / Service Worker Web Push Notification
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      try {
+        const registration = await getServiceWorkerRegistration();
+        if (registration && registration.showNotification && Notification.permission === 'granted') {
+          await registration.showNotification(title, {
+            body,
+            icon: icon || '/icons/icon-192.png',
+            badge: '/icons/icon-192.png',
+            tag: 'commonplace-reminder',
+            data: { url: '/' },
+          });
+          return true;
+        }
+      } catch (e) {
+        console.warn('[PWA] Service worker notification notice:', e);
+      }
+    }
+
+    // 3. Standard Web Browser Notification fallback
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       try {
         new Notification(title, {
           body,
-          icon: icon || 'https://images.unsplash.com/photo-1597848212624-a19eb35e2651?w=100',
+          icon: icon || '/icons/icon-192.png',
         });
         return true;
       } catch (e) {
@@ -148,7 +167,7 @@ class ReminderService {
 
   public async sendTestNotification(): Promise<boolean> {
     return this.sendNotification(
-      'commonplace ♡ reminder',
+      'Commonplace ♡ Reminder',
       'Your schedule reminders and notifications are working on your device!'
     );
   }
@@ -182,7 +201,6 @@ class ReminderService {
 
     reminders.forEach((r) => {
       if (r.notificationEnabled && !r.notified && r.date === todayStr) {
-        // Parse time like "10:00 AM" or "02:30 PM"
         const [timePart, meridiem] = r.startTime.split(' ');
         if (timePart) {
           const [hoursStr, minsStr] = timePart.split(':');
@@ -194,7 +212,6 @@ class ReminderService {
           const reminderTime = new Date();
           reminderTime.setHours(hours, mins, 0, 0);
 
-          // If within 5 minutes of now
           const diffMs = Math.abs(now.getTime() - reminderTime.getTime());
           if (diffMs <= 5 * 60 * 1000) {
             this.sendNotification(

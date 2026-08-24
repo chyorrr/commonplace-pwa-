@@ -20,13 +20,19 @@ import {
   Radio,
   FileText,
   Upload,
-  FolderPlus
+  FolderPlus,
+  Smartphone,
+  Wifi,
+  WifiOff,
+  Database,
+  Bookmark
 } from 'lucide-react-native';
 import { useApp, ThemeMode } from '../../context/AppContext';
 import { Tape } from '../common/Tape';
 import { reminderService } from '../../services/reminderService';
 import { pickImageFromDevice } from '../../utils/imagePicker';
 import { DeviceImagePicker } from '../common/DeviceImagePicker';
+import { isStandalone, isIOS } from '../../utils/pwaUtils';
 
 interface SettingsModalProps {
   visible: boolean;
@@ -51,6 +57,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
     addPin,
     createBoard,
     setActiveBoardId,
+    openInstallModal,
+    isOnline,
   } = useApp();
 
   // Profile Edit State
@@ -484,7 +492,69 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
               </View>
             </View>
 
-            {/* 5. Backup & Export */}
+            {/* 5. iOS App & PWA Status */}
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionTitle}>iPhone App & Offline Sync</Text>
+              <View style={styles.cardContainer}>
+                <View style={styles.notificationRow}>
+                  <View style={[styles.notifIconWrap, { backgroundColor: '#F3E8FF' }]}>
+                    <Smartphone size={18} color={colors.brand.purple} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>
+                      {isStandalone() ? 'Installed Home Screen App' : 'Safari Web View'}
+                    </Text>
+                    <Text style={styles.cardSub}>
+                      {isStandalone() 
+                        ? 'Running in full-screen standalone mode with iOS safe areas active.' 
+                        : 'Add Commonplace to your Home Screen for a seamless fullscreen experience.'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Live Offline / Online Sync Indicator */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, paddingVertical: 4 }}>
+                  {isOnline ? (
+                    <>
+                      <Wifi size={14} color="#16A34A" />
+                      <Text style={{ fontFamily: typography.families.sans, fontSize: 12, color: '#15803D', fontWeight: '600' }}>
+                        Online & Cloud Sync Active
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <WifiOff size={14} color={colors.accents.terracotta} />
+                      <Text style={{ fontFamily: typography.families.sans, fontSize: 12, color: colors.accents.terracotta, fontWeight: '600' }}>
+                        Offline Mode (Changes saved in IndexedDB)
+                      </Text>
+                    </>
+                  )}
+                </View>
+
+                {/* Storage Health */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <Database size={13} color={colors.ink.tertiary} />
+                  <Text style={{ fontFamily: typography.families.sans, fontSize: 11, color: colors.ink.tertiary }}>
+                    IndexedDB Database: Active & Persistent
+                  </Text>
+                </View>
+
+                {!isStandalone() && (
+                  <Pressable
+                    onPress={() => {
+                      onClose();
+                      openInstallModal();
+                    }}
+                    style={({ pressed }) => [styles.testNotifBtn, pressed && { opacity: 0.85 }]}
+                  >
+                    <Bookmark size={14} color={colors.brand.purpleDark} />
+                    <Text style={styles.testNotifText}>Install to Home Screen Guide</Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+
+            {/* 6. Backup & Export */}
             <View style={styles.sectionBlock}>
               <Text style={styles.sectionTitle}>Backup & Export</Text>
               <Pressable

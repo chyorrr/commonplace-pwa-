@@ -20,15 +20,40 @@ export const VoiceNotePin: React.FC<VoiceNotePinProps> = ({ pin, onPress }) => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    const audioSource = pin.audioUrl || (pin as any).audioUri;
+
     if (isPlaying) {
-      if (pin.audioUrl) {
-        if (!audioElemRef.current) {
-          audioElemRef.current = new Audio(pin.audioUrl);
-        }
-        audioElemRef.current.play().catch(() => {
-          // Fallback to speech synthesis if audio blocked
+      if (audioSource) {
+        try {
+          if (!audioElemRef.current) {
+            audioElemRef.current = new Audio();
+          }
+          const audio = audioElemRef.current;
+          audio.src = audioSource;
+          audio.currentTime = 0;
+          audio.volume = 1.0;
+
+          audio.onended = () => {
+            if (currentlyPlayingAudioId === pin.id) {
+              togglePlayAudio(pin.id);
+            }
+          };
+
+          audio.onerror = (e) => {
+            console.warn('Audio playback error, using speech fallback:', e);
+            speakTranscript();
+          };
+
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.catch((err) => {
+              console.warn('Audio play notice, falling back to narration:', err);
+              speakTranscript();
+            });
+          }
+        } catch (e) {
           speakTranscript();
-        });
+        }
       } else {
         speakTranscript();
       }
@@ -37,18 +62,25 @@ export const VoiceNotePin: React.FC<VoiceNotePinProps> = ({ pin, onPress }) => {
         audioElemRef.current.pause();
         audioElemRef.current.currentTime = 0;
       }
-      if ('speechSynthesis' in window) {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
     }
-  }, [isPlaying, pin.audioUrl]);
+
+    return () => {
+      if (audioElemRef.current) {
+        audioElemRef.current.pause();
+      }
+    };
+  }, [isPlaying, pin.audioUrl, (pin as any).audioUri]);
 
   const speakTranscript = () => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window && pin.transcriptExcerpt) {
+    const textToSpeak = pin.transcriptExcerpt || (pin as any).transcription || pin.title;
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window && textToSpeak) {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(pin.transcriptExcerpt);
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
       utterance.rate = 0.95;
-      utterance.pitch = 1.05;
+      utterance.pitch = 1.0;
       utterance.onend = () => {
         if (currentlyPlayingAudioId === pin.id) {
           togglePlayAudio(pin.id);

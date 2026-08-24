@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, Image, Platform, StatusBar } from 'react-native';
 import { useApp, UserProfile } from '../context/AppContext';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 36,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 24 : 44,
     paddingBottom: 40,
     minHeight: '100%',
     alignItems: 'center',
