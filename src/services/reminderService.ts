@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import { ReminderItem } from '../types';
 import { getServiceWorkerRegistration } from '../serviceWorkerRegistration';
 
-// Safely lazy-load expo-notifications to prevent Expo Go SDK 53+ Android red-screen error
+// Safely lazy-load expo-notifications if running in native shell
 let ExpoNotifications: any = null;
 try {
   if (Platform.OS !== 'web') {
@@ -20,26 +20,55 @@ try {
     }
   }
 } catch (e) {
-  console.log('Expo Go notification fallback active');
+  // Web fallback active
+}
+
+export interface InAppToastPayload {
+  id: string;
+  title: string;
+  body: string;
+  category?: string;
+  time?: string;
 }
 
 class ReminderService {
   private hasPermission: boolean = false;
   private checkInterval: any = null;
+  private scheduledTimeouts: Map<string, any> = new Map();
   private onTriggerCallback: ((reminder: ReminderItem) => void) | null = null;
+  private toastSubscribers: Set<(toast: InAppToastPayload) => void> = new Set();
+  private monitoredReminders: ReminderItem[] = [];
 
   constructor() {
-    if (Platform.OS !== 'web' && ExpoNotifications?.getPermissionsAsync) {
-      try {
+    this.refreshPermissionState();
+
+    // Listen for tab focus / screen wake to check due reminders immediately
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          this.checkDueReminders();
+        }
+      });
+    }
+  }
+
+  public refreshPermissionState(): boolean {
+    if (Platform.OS !== 'web') {
+      if (ExpoNotifications?.getPermissionsAsync) {
         ExpoNotifications.getPermissionsAsync()
           .then(({ status }: any) => {
             this.hasPermission = status === 'granted';
           })
           .catch(() => {});
-      } catch (e) {}
-    } else if (typeof window !== 'undefined' && 'Notification' in window) {
-      this.hasPermission = Notification.permission === 'granted';
+      }
+      return this.hasPermission;
     }
+
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      this.hasPermission = Notification.permission === 'granted';
+      return this.hasPermission;
+    }
+    return false;
   }
 
   public async requestNotificationPermission(): Promise<boolean> {
@@ -77,43 +106,62 @@ class ReminderService {
   }
 
   public isPermissionGranted(): boolean {
-    if (Platform.OS !== 'web') {
-      return this.hasPermission;
-    }
-    if (typeof window === 'undefined' || !('Notification' in window)) {
-      return false;
-    }
-    return Notification.permission === 'granted';
+    this.refreshPermissionState();
+    return this.hasPermission;
+  }
+
+  public subscribeToast(callback: (toast: InAppToastPayload) => void): () => void {
+    this.toastSubscribers.add(callback);
+    return () => {
+      this.toastSubscribers.delete(callback);
+    };
   }
 
   public playChimeSound() {
     try {
-      if (typeof window !== 'undefined' && ((window as any).AudioContext || (window as any).webkitAudioContext)) {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        const audioCtx = new AudioCtx();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
+      if (typeof window !== 'undefined') {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          const audioCtx = new AudioContextClass();
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
 
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
-        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
 
-        osc.start(audioCtx.currentTime);
-        osc.stop(audioCtx.currentTime + 0.6);
+          // Pleasant two-tone chime (D5 -> A5)
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+          osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+          
+          gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.7);
+
+          osc.start(audioCtx.currentTime);
+          osc.stop(audioCtx.currentTime + 0.7);
+        }
       }
     } catch (e) {
-      // Audio context might be restricted before user gesture
+      // AudioContext might require user gesture
     }
   }
 
   public async sendNotification(title: string, body: string, icon?: string): Promise<boolean> {
     this.playChimeSound();
 
-    // 1. Native iOS / Android Notification via Expo Notifications (if in native shell)
+    // 1. In-App Visual Toast Banner
+    const toastPayload: InAppToastPayload = {
+      id: `toast-${Date.now()}`,
+      title,
+      body,
+    };
+    this.toastSubscribers.forEach((fn) => {
+      try {
+        fn(toastPayload);
+      } catch (e) {}
+    });
+
+    // 2. Native iOS / Android Notification via Expo Notifications
     if (Platform.OS !== 'web' && ExpoNotifications?.scheduleNotificationAsync) {
       try {
         await ExpoNotifications.scheduleNotificationAsync({
@@ -127,11 +175,11 @@ class ReminderService {
         });
         return true;
       } catch (err) {
-        console.warn('Native Expo notification notice:', err);
+        console.warn('Native notification error:', err);
       }
     }
 
-    // 2. iOS 16.4+ Standalone PWA / Service Worker Web Push Notification
+    // 3. Service Worker Web Push Notification (iOS 16.4+ standalone PWA & Android)
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       try {
         const registration = await getServiceWorkerRegistration();
@@ -140,17 +188,17 @@ class ReminderService {
             body,
             icon: icon || '/icons/icon-192.png',
             badge: '/icons/icon-192.png',
-            tag: 'commonplace-reminder',
+            tag: `reminder-${Date.now()}`,
             data: { url: '/' },
           });
           return true;
         }
       } catch (e) {
-        console.warn('[PWA] Service worker notification notice:', e);
+        console.warn('[PWA] Service worker showNotification error:', e);
       }
     }
 
-    // 3. Standard Web Browser Notification fallback
+    // 4. Standard Web Notification fallback
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       try {
         new Notification(title, {
@@ -159,69 +207,159 @@ class ReminderService {
         });
         return true;
       } catch (e) {
-        console.warn('Web notification notice:', e);
+        console.warn('Web notification constructor error:', e);
       }
     }
     return true;
   }
 
   public async sendTestNotification(): Promise<boolean> {
+    const granted = await this.requestNotificationPermission();
     return this.sendNotification(
-      'Commonplace ♡ Reminder',
-      'Your schedule reminders and notifications are working on your device!'
+      'Commonplace ♡ Reminder Alert',
+      granted 
+        ? 'Your schedule reminders and notifications are working on your device!'
+        : 'Reminder alert chime is active! (Allow system notifications in browser settings for background push)'
     );
   }
 
   public startMonitoring(reminders: ReminderItem[], onTrigger: (reminder: ReminderItem) => void) {
+    this.monitoredReminders = reminders;
     this.onTriggerCallback = onTrigger;
+
+    // Clear previous scheduled timeouts
+    this.scheduledTimeouts.forEach((t) => clearTimeout(t));
+    this.scheduledTimeouts.clear();
+
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
     }
 
+    const now = new Date();
+
+    // Schedule exact timers for all future reminders today
+    reminders.forEach((r) => {
+      if (!r.notificationEnabled || r.notified || r.status === 'completed') return;
+
+      const reminderDate = this.parseReminderDateTime(r.date, r.startTime);
+      if (!reminderDate) return;
+
+      const isSameDay =
+        reminderDate.getFullYear() === now.getFullYear() &&
+        reminderDate.getMonth() === now.getMonth() &&
+        reminderDate.getDate() === now.getDate();
+
+      if (!isSameDay) return;
+
+      const msUntilDue = reminderDate.getTime() - now.getTime();
+      // If due in the future today (within next 24 hours)
+      if (msUntilDue > 0 && msUntilDue <= 24 * 60 * 60 * 1000) {
+        const timeoutId = setTimeout(() => {
+          this.sendNotification(
+            `🔔 ${r.title}`,
+            `${r.category ? `${r.category} · ` : ''}${r.startTime || 'Scheduled Time'}`
+          );
+          if (this.onTriggerCallback) {
+            this.onTriggerCallback(r);
+          }
+        }, msUntilDue);
+
+        this.scheduledTimeouts.set(r.id, timeoutId);
+      }
+    });
+
+    // Also check every 5 seconds as a safety net
     this.checkInterval = setInterval(() => {
-      this.checkDueReminders(reminders);
-    }, 30000); // check every 30s
+      this.checkDueReminders();
+    }, 5000);
 
     // Run immediate check
-    this.checkDueReminders(reminders);
+    this.checkDueReminders();
   }
 
   public stopMonitoring() {
+    this.scheduledTimeouts.forEach((t) => clearTimeout(t));
+    this.scheduledTimeouts.clear();
+
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
     }
   }
 
-  private checkDueReminders(reminders: ReminderItem[]) {
+  /**
+   * Parse reminder date and time string into a local Date object
+   */
+  private parseReminderDateTime(dateStr?: string, timeStr?: string): Date | null {
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (dateStr) {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        if (!isNaN(y) && !isNaN(m) && !isNaN(day)) {
+          d.setFullYear(y, m, day);
+        }
+      }
+    }
+
+    if (timeStr) {
+      const cleanTime = timeStr.trim().toUpperCase();
+      const isPM = cleanTime.includes('PM');
+      const isAM = cleanTime.includes('AM');
+      const timeOnly = cleanTime.replace('AM', '').replace('PM', '').trim();
+      const [hStr, mStr] = timeOnly.split(':');
+      let hours = parseInt(hStr || '0', 10);
+      const mins = parseInt(mStr || '0', 10);
+
+      if (isPM && hours < 12) hours += 12;
+      if (isAM && hours === 12) hours = 0;
+
+      d.setHours(hours, isNaN(mins) ? 0 : mins, 0, 0);
+      return d;
+    }
+
+    return d;
+  }
+
+  private checkDueReminders() {
+    const reminders = this.monitoredReminders;
     if (!reminders || reminders.length === 0) return;
 
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
 
     reminders.forEach((r) => {
-      if (r.notificationEnabled && !r.notified && r.date === todayStr) {
-        const [timePart, meridiem] = r.startTime.split(' ');
-        if (timePart) {
-          const [hoursStr, minsStr] = timePart.split(':');
-          let hours = parseInt(hoursStr || '0', 10);
-          const mins = parseInt(minsStr || '0', 10);
-          if (meridiem?.toUpperCase() === 'PM' && hours < 12) hours += 12;
-          if (meridiem?.toUpperCase() === 'AM' && hours === 12) hours = 0;
+      // Must have notifications enabled, not already notified, and not marked completed
+      if (!r.notificationEnabled || r.notified || r.status === 'completed') {
+        return;
+      }
 
-          const reminderTime = new Date();
-          reminderTime.setHours(hours, mins, 0, 0);
+      const reminderDate = this.parseReminderDateTime(r.date, r.startTime);
+      if (!reminderDate) return;
 
-          const diffMs = Math.abs(now.getTime() - reminderTime.getTime());
-          if (diffMs <= 5 * 60 * 1000) {
-            this.sendNotification(
-              `🔔 Reminder: ${r.title}`,
-              `Time for ${r.category}: ${r.title} (${r.startTime})`
-            );
-            if (this.onTriggerCallback) {
-              this.onTriggerCallback(r);
-            }
-          }
+      // Check if reminder is scheduled for today
+      const isSameDay =
+        reminderDate.getFullYear() === now.getFullYear() &&
+        reminderDate.getMonth() === now.getMonth() &&
+        reminderDate.getDate() === now.getDate();
+
+      if (!isSameDay) return;
+
+      // Due if current time is at or past scheduled time within the last 2 hours
+      const diffMs = now.getTime() - reminderDate.getTime();
+      const isDue = diffMs >= -30000 && diffMs <= 2 * 60 * 60 * 1000;
+
+      if (isDue) {
+        this.sendNotification(
+          `🔔 ${r.title}`,
+          `${r.category ? `${r.category} · ` : ''}${r.startTime || 'Scheduled Time'}`
+        );
+
+        if (this.onTriggerCallback) {
+          this.onTriggerCallback(r);
         }
       }
     });

@@ -46,8 +46,25 @@ export const ScheduleScreen: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth()); // 0-11
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState<boolean>(false);
 
-  // Selected Date string (YYYY-MM-DD synced to current day)
+  // Selected Date string (YYYY-MM-DD synced to current device day)
   const [selectedDateStr, setSelectedDateStr] = useState<string>(getTodayDateStr);
+  const ribbonScrollRef = React.useRef<any>(null);
+
+  // Auto-sync to current device date whenever Schedule tab is active
+  React.useEffect(() => {
+    const today = new Date();
+    setSelectedYear(today.getFullYear());
+    setSelectedMonth(today.getMonth());
+    setSelectedDateStr(getTodayDateStr());
+
+    // Scroll to center today's date capsule in the ribbon
+    const dayIndex = today.getDate() - 1;
+    setTimeout(() => {
+      if (ribbonScrollRef.current) {
+        ribbonScrollRef.current.scrollTo?.({ x: Math.max(0, dayIndex * 54 - 120), animated: true });
+      }
+    }, 200);
+  }, []);
 
   // Modal State for New Task / Reminder
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -207,7 +224,12 @@ export const ScheduleScreen: React.FC = () => {
           )}
 
           {/* Horizontal Day Capsules */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateRibbon}>
+          <ScrollView
+            ref={ribbonScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.dateRibbon}
+          >
             {monthDays.map((day) => {
               const isSelected = day.dateStr === selectedDateStr;
               return (

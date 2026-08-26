@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, StatusBar, SafeAreaView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, StatusBar, SafeAreaView, Platform, Pressable, Animated } from 'react-native';
 import { AppProvider, useApp, ThemeMode } from './context/AppContext';
 import { VerticalNav } from './components/common/VerticalNav';
 import { HomeScreen } from './screens/HomeScreen';
@@ -18,12 +18,18 @@ import { NoteEditorModal } from './components/modals/NoteEditorModal';
 import { VoiceNoteModal } from './components/modals/VoiceNoteModal';
 import { SettingsModal } from './components/modals/SettingsModal';
 import { AddToHomeScreenModal } from './components/common/AddToHomeScreenModal';
+import { PWAInstallBanner } from './components/common/PWAInstallBanner';
 import { colors } from './theme/colors';
+import { typography } from './theme/typography';
+import { reminderService, InAppToastPayload } from './services/reminderService';
+import { BellRing, X } from 'lucide-react-native';
 
 const MainNavigator: React.FC = () => {
   const {
     activeTab,
+    setActiveTab,
     activeBoardId,
+    setActiveBoardId,
     isGuideOpen,
     closeGuide,
     isSettingsOpen,
@@ -35,6 +41,18 @@ const MainNavigator: React.FC = () => {
     isInstallModalOpen,
     closeInstallModal,
   } = useApp();
+
+  const [activeToast, setActiveToast] = useState<InAppToastPayload | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = reminderService.subscribeToast((toast) => {
+      setActiveToast(toast);
+      setTimeout(() => {
+        setActiveToast((current) => (current?.id === toast.id ? null : current));
+      }, 7000);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const renderActiveScreen = () => {
     if (activeBoardId) {
@@ -66,6 +84,36 @@ const MainNavigator: React.FC = () => {
       {/* Floating Action Rail & Bottom-Left Profile Widget */}
       <VerticalNav />
 
+      {/* Real-time In-App Reminder Alert Toast */}
+      {Boolean(activeToast) && (
+        <Pressable
+          style={styles.toastBanner}
+          onPress={() => {
+            setActiveToast(null);
+            if (activeBoardId) setActiveBoardId(null);
+            setActiveTab('schedule');
+          }}
+        >
+          <View style={styles.toastBellCircle}>
+            <BellRing size={16} color="#FFFFFF" strokeWidth={2.4} />
+          </View>
+          <View style={styles.toastTextCol}>
+            <Text style={styles.toastTitle}>{activeToast?.title}</Text>
+            <Text style={styles.toastBody} numberOfLines={1}>{activeToast?.body}</Text>
+          </View>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation?.();
+              setActiveToast(null);
+            }}
+            style={styles.toastCloseBtn}
+            hitSlop={8}
+          >
+            <X size={14} color={colors.ink.secondary} />
+          </Pressable>
+        </Pressable>
+      )}
+
       {/* Modals & Overlays */}
       <CreateSheet />
       <NoteEditorModal visible={isNoteEditorOpen} onClose={closeNoteEditor} />
@@ -74,10 +122,11 @@ const MainNavigator: React.FC = () => {
       <StickerStudioModal />
       <PrivacyLockModal />
 
-      {/* Interactive Guide, Settings & iOS Add To Home Screen Helper */}
+      {/* Interactive Guide, Settings & iOS/Android Add To Home Screen Helper */}
       <GuideModal visible={isGuideOpen} onClose={closeGuide} />
       <SettingsModal visible={isSettingsOpen} onClose={closeSettings} />
       <AddToHomeScreenModal visible={isInstallModalOpen} onClose={closeInstallModal} />
+      <PWAInstallBanner />
     </View>
   );
 };
@@ -211,6 +260,57 @@ const styles = StyleSheet.create({
     height: '100%',
     position: 'relative',
     overflow: 'hidden',
+  },
+  toastBanner: {
+    position: 'absolute',
+    top: 14,
+    left: 14,
+    right: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    zIndex: 999,
+    shadowColor: '#6B21A8',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
+    elevation: 10,
+    borderWidth: 1.5,
+    borderColor: '#E9D5FF',
+  },
+  toastBellCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.brand.purple,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  toastTextCol: {
+    flex: 1,
+  },
+  toastTitle: {
+    fontFamily: typography.families.heading,
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: colors.ink.primary,
+  },
+  toastBody: {
+    fontFamily: typography.families.sans,
+    fontSize: 11.5,
+    color: colors.ink.secondary,
+    marginTop: 1,
+  },
+  toastCloseBtn: {
+    padding: 6,
   },
   ambientOrb: {
     position: 'absolute',

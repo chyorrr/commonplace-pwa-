@@ -492,9 +492,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
               </View>
             </View>
 
-            {/* 5. iOS App & PWA Status */}
+            {/* 5. Mobile App & PWA Status */}
             <View style={styles.sectionBlock}>
-              <Text style={styles.sectionTitle}>iPhone App & Offline Sync</Text>
+              <Text style={styles.sectionTitle}>App Installation & Offline Sync</Text>
               <View style={styles.cardContainer}>
                 <View style={styles.notificationRow}>
                   <View style={[styles.notifIconWrap, { backgroundColor: '#F3E8FF' }]}>
@@ -502,12 +502,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cardTitle}>
-                      {isStandalone() ? 'Installed Home Screen App' : 'Safari Web View'}
+                      {isStandalone() ? 'Installed Home Screen App' : 'Browser Web View'}
                     </Text>
                     <Text style={styles.cardSub}>
                       {isStandalone() 
-                        ? 'Running in full-screen standalone mode with iOS safe areas active.' 
-                        : 'Add Commonplace to your Home Screen for a seamless fullscreen experience.'}
+                        ? 'Running in full-screen standalone mode with native gesture navigation.' 
+                        : 'Install Commonplace on iPhone, iPad, or Android for full-screen offline use.'}
                     </Text>
                   </View>
                 </View>
@@ -547,8 +547,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                     }}
                     style={({ pressed }) => [styles.testNotifBtn, pressed && { opacity: 0.85 }]}
                   >
-                    <Bookmark size={14} color={colors.brand.purpleDark} />
-                    <Text style={styles.testNotifText}>Install to Home Screen Guide</Text>
+                    <Download size={14} color={colors.brand.purpleDark} />
+                    <Text style={styles.testNotifText}>Install App (Android & iPhone)</Text>
                   </Pressable>
                 )}
               </View>
