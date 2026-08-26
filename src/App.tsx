@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     paddingRight: (Platform.OS === 'web' ? 'env(safe-area-inset-right, 0px)' : 0) as any,
     alignSelf: 'center',
     position: 'relative',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   appViewport: {
     flex: 1,
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     position: 'relative',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   toastBanner: {
     position: 'absolute',

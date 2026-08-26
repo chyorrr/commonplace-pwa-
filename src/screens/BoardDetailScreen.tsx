@@ -547,7 +547,7 @@ const styles = StyleSheet.create({
   },
   floatingBottomDock: {
     position: 'absolute',
-    bottom: 0,
+    bottom: (Platform.OS === 'web' ? 'calc(14px - env(safe-area-inset-bottom, 0px))' : 14) as any,
     alignSelf: 'center',
     zIndex: 50,
   },
