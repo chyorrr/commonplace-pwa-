@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, ScrollView, TextInput, Image, Platform } from 'react-native';
 import { useApp } from '../../context/AppContext';
 import { colors } from '../../theme/colors';
@@ -12,7 +12,6 @@ import {
   Stamp, 
   MapPin, 
   Calendar, 
-  Clock, 
   ExternalLink, 
   MessageCircle, 
   Instagram, 
@@ -23,13 +22,19 @@ import {
   Pencil, 
   Check, 
   Plus, 
-  Camera, 
-  Save, 
-  Undo2 
+  Undo2,
+  Play,
+  Pause,
+  Volume2,
+  FileText,
+  Mic,
+  MicOff,
+  Sparkles
 } from 'lucide-react-native';
 import { Tape } from '../common/Tape';
 import { shareService } from '../../services/shareService';
 import { spotifyService } from '../../services/spotifyService';
+import { speechAudioService } from '../../services/speechAndAudio';
 import { DeviceImagePicker } from '../common/DeviceImagePicker';
 import { ChecklistItem, Pin } from '../../types';
 
@@ -44,11 +49,15 @@ export const PinDetailModal: React.FC = () => {
     toggleChecklistItem,
     boards,
     addPin,
+    addToDesk,
     openStickerStudio,
   } = useApp();
 
   const [isMoveMenuOpen, setIsMoveMenuOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [isDictatingEdit, setIsDictatingEdit] = useState(false);
+  const stopDictateRef = useRef<(() => void) | null>(null);
 
   const pin = activePinDetail;
 
@@ -78,6 +87,8 @@ export const PinDetailModal: React.FC = () => {
     if (pin) {
       setEditTitle(pin.title || '');
       setEditPaperTone((pin as any).paperTone || 'cream');
+      setIsPlayingAudio(false);
+      setIsDictatingEdit(false);
 
       if (pin.type === 'text') {
         setEditBody(pin.body || '');
@@ -117,21 +128,85 @@ export const PinDetailModal: React.FC = () => {
   }, [pin, isEditing]);
 
   const handleClose = () => {
+    speechAudioService.stopAudio();
+    if (stopDictateRef.current) {
+      stopDictateRef.current();
+      stopDictateRef.current = null;
+    }
     setActivePinDetail(null);
     setIsMoveMenuOpen(false);
     setIsEditing(false);
+    setIsPlayingAudio(false);
+    setIsDictatingEdit(false);
+  };
+
+  const handleTogglePlayPinAudio = () => {
+    if (isPlayingAudio) {
+      speechAudioService.stopAudio();
+      setIsPlayingAudio(false);
+    } else if (pin && (pin as any).audioUrl) {
+      setIsPlayingAudio(true);
+      speechAudioService.playAudio((pin as any).audioUrl, () => {
+        setIsPlayingAudio(false);
+      });
+    }
+  };
+
+  const handleToggleDictateEdit = () => {
+    if (isDictatingEdit) {
+      stopDictateRef.current?.();
+      stopDictateRef.current = null;
+      setIsDictatingEdit(false);
+    } else {
+      setIsDictatingEdit(true);
+      const stopFn = speechAudioService.startDictation(
+        (text) => {
+          setEditBody((prev) => (prev ? prev + ' ' + text : text));
+        },
+        (listening) => setIsDictatingEdit(listening)
+      );
+      stopDictateRef.current = stopFn;
+    }
+  };
+
+  const handleConvertVoiceToNote = () => {
+    if (!pin || pin.type !== 'voicenote') return;
+    const transcribedContent = pin.transcriptExcerpt || (pin as any).transcription || pin.title || 'Voice memo thoughts.';
+
+    const newNote = {
+      type: 'text' as const,
+      title: pin.title !== 'Voice Memo' ? pin.title : 'Transcribed Note',
+      body: transcribedContent,
+      paperTone: 'peach' as const,
+      fontStyle: 'handwriting' as const,
+      tapeStyle: 'top-center' as const,
+      authorNote: `Transcribed from voice memo on ${new Date().toLocaleDateString()}`,
+    };
+
+    if (pin.boardId) {
+      addPin(pin.boardId, newNote as any);
+    } else {
+      addToDesk(newNote as any);
+    }
+    handleClose();
   };
 
   const handleMoveToBoard = (targetBoardId: string) => {
     if (!pin) return;
     deletePin(pin.id);
     const { id, createdAt, boardId, ...rest } = pin;
-    addPin(targetBoardId, rest);
+    addPin(targetBoardId, rest as any);
     handleClose();
   };
 
   const handleSaveEdit = () => {
     if (!pin) return;
+
+    if (stopDictateRef.current) {
+      stopDictateRef.current();
+      stopDictateRef.current = null;
+    }
+    setIsDictatingEdit(false);
 
     let updates: Record<string, any> = {
       title: editTitle.trim() || undefined,
@@ -143,7 +218,7 @@ export const PinDetailModal: React.FC = () => {
           ...updates,
           body: editBody.trim(),
           authorNote: editAuthorNote.trim() || undefined,
-          paperTone: editPaperTone as any,
+          paperTone: editPaperTone,
           imageUrl: editImageUrl.trim() || undefined,
         };
         break;
@@ -152,7 +227,7 @@ export const PinDetailModal: React.FC = () => {
         updates = {
           ...updates,
           thought: editBody.trim(),
-        } as any;
+        };
         break;
 
       case 'quote':
@@ -161,7 +236,7 @@ export const PinDetailModal: React.FC = () => {
           quote: editBody.trim(),
           author: editAuthor.trim() || undefined,
           source: editSource.trim() || undefined,
-        } as any;
+        };
         break;
 
       case 'checklist':
@@ -176,8 +251,8 @@ export const PinDetailModal: React.FC = () => {
           ...updates,
           title: editTitle.trim() || 'Checklist',
           items: cleanItems.length > 0 ? cleanItems : [{ id: `item-${Date.now()}-0`, text: 'Checklist item', completed: false }],
-          paperTone: editPaperTone as any,
-        } as any;
+          paperTone: editPaperTone,
+        };
         break;
 
       case 'photo':
@@ -187,7 +262,7 @@ export const PinDetailModal: React.FC = () => {
           caption: editCaption.trim() || undefined,
           handwrittenDate: editDate.trim() || undefined,
           location: editLocation.trim() || undefined,
-        } as any;
+        };
         break;
 
       case 'music':
@@ -197,7 +272,7 @@ export const PinDetailModal: React.FC = () => {
           artist: editArtist.trim() || pin.artist,
           spotifyUrl: editSpotifyUrl.trim() || undefined,
           personalMemoryNote: editMemoryNote.trim() || undefined,
-        } as any;
+        };
         break;
 
       case 'link':
@@ -207,7 +282,7 @@ export const PinDetailModal: React.FC = () => {
           siteName: editSiteName.trim() || pin.siteName,
           url: editUrl.trim() || pin.url,
           snippet: editSnippet.trim() || undefined,
-        } as any;
+        };
         break;
 
       case 'journal':
@@ -220,7 +295,7 @@ export const PinDetailModal: React.FC = () => {
           headline: editHeadline.trim() || pin.headline,
           dateLabel: editDate.trim() || pin.dateLabel,
           paragraphs: paragraphs.length > 0 ? paragraphs : [editBody.trim()],
-        } as any;
+        };
         break;
 
       case 'voicenote':
@@ -228,7 +303,8 @@ export const PinDetailModal: React.FC = () => {
           ...updates,
           title: editTitle.trim() || pin.title,
           transcriptExcerpt: editBody.trim() || undefined,
-        } as any;
+          transcription: editBody.trim() || undefined,
+        };
         break;
     }
 
@@ -516,11 +592,27 @@ export const PinDetailModal: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>Body Content</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={styles.inputLabel}>Body Content</Text>
+                        <Pressable
+                          onPress={handleToggleDictateEdit}
+                          style={({ pressed }) => [
+                            styles.dictateEditBtn,
+                            isDictatingEdit && styles.dictateEditBtnActive,
+                            pressed && { opacity: 0.75 },
+                          ]}
+                          hitSlop={6}
+                        >
+                          {isDictatingEdit ? <MicOff size={12} color="#FFF" /> : <Mic size={12} color={colors.brand.purple} />}
+                          <Text style={[styles.dictateEditBtnText, isDictatingEdit && { color: '#FFF' }]}>
+                            {isDictatingEdit ? 'Stop Dictating' : 'Speak to Write'}
+                          </Text>
+                        </Pressable>
+                      </View>
                       <TextInput
                         value={editBody}
                         onChangeText={setEditBody}
-                        placeholder="Write your note..."
+                        placeholder="Write your note, or tap Speak to Write..."
                         placeholderTextColor={colors.ink.faded}
                         multiline
                         numberOfLines={6}
@@ -565,7 +657,13 @@ export const PinDetailModal: React.FC = () => {
                 {pin.type === 'thought' && (
                   <View style={{ gap: 12 }}>
                     <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>Thought</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={styles.inputLabel}>Thought</Text>
+                        <Pressable onPress={handleToggleDictateEdit} style={styles.dictateEditBtn} hitSlop={6}>
+                          <Mic size={12} color={colors.brand.purple} />
+                          <Text style={styles.dictateEditBtnText}>Speak</Text>
+                        </Pressable>
+                      </View>
                       <TextInput
                         value={editBody}
                         onChangeText={setEditBody}
@@ -824,14 +922,22 @@ export const PinDetailModal: React.FC = () => {
                       />
                     </View>
                     <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>Transcript / Note</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={styles.inputLabel}>Transcript / Spoken Text</Text>
+                        <Pressable onPress={handleToggleDictateEdit} style={styles.dictateEditBtn} hitSlop={6}>
+                          {isDictatingEdit ? <MicOff size={12} color="#FFF" /> : <Mic size={12} color={colors.brand.purple} />}
+                          <Text style={[styles.dictateEditBtnText, isDictatingEdit && { color: '#FFF' }]}>
+                            {isDictatingEdit ? 'Stop Dictating' : 'Speak to Transcribe'}
+                          </Text>
+                        </Pressable>
+                      </View>
                       <TextInput
                         value={editBody}
                         onChangeText={setEditBody}
                         placeholder="Transcript text..."
                         placeholderTextColor={colors.ink.faded}
                         multiline
-                        numberOfLines={4}
+                        numberOfLines={5}
                         style={[styles.textInput, styles.textArea]}
                       />
                     </View>
@@ -979,16 +1085,49 @@ export const PinDetailModal: React.FC = () => {
                 </View>
               )}
 
-              {/* Voice Note Pin Render */}
+              {/* Voice Note Pin Render with Playback and Convert to Note */}
               {pin.type === 'voicenote' && (
                 <View style={styles.voiceBlock}>
-                  <Text style={styles.detailTitle}>{pin.title}</Text>
-                  <Text style={styles.detailVoiceDate}>{pin.recordedDate}</Text>
-                  {!!pin.transcriptExcerpt && (
-                    <Text style={styles.detailTranscript}>
-                      {pin.transcriptExcerpt}
-                    </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={styles.detailTitle}>{pin.title}</Text>
+                    <Text style={styles.detailVoiceDate}>{pin.recordedDate}</Text>
+                  </View>
+
+                  {/* Play/Pause Audio Player Card */}
+                  {(pin as any).audioUrl && (
+                    <View style={styles.voiceAudioCard}>
+                      <Pressable
+                        onPress={handleTogglePlayPinAudio}
+                        style={({ pressed }) => [styles.voicePlayBtn, pressed && { opacity: 0.8 }]}
+                        hitSlop={6}
+                      >
+                        {isPlayingAudio ? <Pause size={16} color="#FFF" /> : <Play size={16} color="#FFF" fill="#FFF" />}
+                      </Pressable>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.voiceAudioLabel}>
+                          {isPlayingAudio ? 'Playing voice recording...' : `Voice Memo (${(pin as any).durationSeconds || 8}s)`}
+                        </Text>
+                        <Text style={styles.voiceAudioSub}>Recorded Audio</Text>
+                      </View>
+                    </View>
                   )}
+
+                  {/* Transcript Content */}
+                  <View style={styles.voiceTranscriptWrap}>
+                    <Text style={styles.voiceTranscriptHeading}>Spoken Transcription</Text>
+                    <Text style={styles.detailTranscript}>
+                      {pin.transcriptExcerpt || (pin as any).transcription || 'No transcription available.'}
+                    </Text>
+                  </View>
+
+                  {/* Quick Action: Convert to Written Note */}
+                  <Pressable
+                    onPress={handleConvertVoiceToNote}
+                    style={({ pressed }) => [styles.convertVoiceToNoteBtn, pressed && { opacity: 0.85 }]}
+                  >
+                    <FileText size={14} color={colors.brand.purple} />
+                    <Text style={styles.convertVoiceToNoteBtnText}>Convert Voice Memo to Written Note</Text>
+                  </Pressable>
                 </View>
               )}
 
@@ -1214,6 +1353,24 @@ const styles = StyleSheet.create({
     color: colors.ink.secondary,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
+  },
+  dictateEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    backgroundColor: '#EDE8FF',
+  },
+  dictateEditBtnActive: {
+    backgroundColor: '#EF4444',
+  },
+  dictateEditBtnText: {
+    fontFamily: typography.families.sans,
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.brand.purpleDark,
   },
   textInput: {
     fontFamily: typography.families.sans,
@@ -1487,19 +1644,86 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   voiceBlock: {
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
   detailVoiceDate: {
     fontFamily: typography.families.handwritten,
-    fontSize: 14,
+    fontSize: 13.5,
     color: colors.ink.handwrittenFaded,
-    marginBottom: 8,
+  },
+  voiceAudioCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F7F2FF',
+    borderRadius: 16,
+    padding: 12,
+    marginVertical: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 58, 237, 0.12)',
+  },
+  voicePlayBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.brand.purple,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceAudioLabel: {
+    fontFamily: typography.families.sans,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.brand.purpleDark,
+  },
+  voiceAudioSub: {
+    fontFamily: typography.families.sans,
+    fontSize: 11,
+    color: colors.ink.tertiary,
+    marginTop: 1,
+  },
+  voiceTranscriptWrap: {
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 6,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  voiceTranscriptHeading: {
+    fontFamily: typography.families.sans,
+    fontSize: 10.5,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    color: colors.ink.tertiary,
+    marginBottom: 6,
+    letterSpacing: 0.4,
   },
   detailTranscript: {
-    fontFamily: typography.families.sans,
+    fontFamily: typography.families.serif,
     fontSize: 15,
     color: colors.ink.secondary,
-    lineHeight: 21,
+    lineHeight: 22,
+  },
+  convertVoiceToNoteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#EDE8FF',
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 58, 237, 0.18)',
+  },
+  convertVoiceToNoteBtnText: {
+    fontFamily: typography.families.sans,
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.brand.purpleDark,
   },
   linkBlock: {
     paddingVertical: 8,

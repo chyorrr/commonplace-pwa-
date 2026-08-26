@@ -10,7 +10,13 @@ import {
   Upload, 
   FolderPlus, 
   Mic, 
-  Square
+  MicOff,
+  Square,
+  Play,
+  Pause,
+  FileText,
+  Sparkles,
+  Volume2
 } from 'lucide-react-native';
 import { Tape } from '../common/Tape';
 import { DeviceImagePicker } from '../common/DeviceImagePicker';
@@ -85,6 +91,28 @@ export const CreateSheet: React.FC = () => {
   const [recordedDuration, setRecordedDuration] = useState(0);
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | undefined>(undefined);
   const [recordedWaveform, setRecordedWaveform] = useState<number[]>([0.3, 0.6, 0.8, 0.9, 0.6, 0.4, 0.7, 0.8, 0.5, 0.3]);
+  const [isPlayingRecordedAudio, setIsPlayingRecordedAudio] = useState(false);
+
+  // Dictation for text notes
+  const [isDictatingText, setIsDictatingText] = useState(false);
+  const stopDictationRef = React.useRef<(() => void) | null>(null);
+
+  const handleToggleDictateText = () => {
+    if (isDictatingText) {
+      stopDictationRef.current?.();
+      stopDictationRef.current = null;
+      setIsDictatingText(false);
+    } else {
+      setIsDictatingText(true);
+      const stopFn = speechAudioService.startDictation(
+        (text) => {
+          setBody((prev) => (prev ? prev + ' ' + text : text));
+        },
+        (listening) => setIsDictatingText(listening)
+      );
+      stopDictationRef.current = stopFn;
+    }
+  };
 
   const handleToggleRecordAudio = async () => {
     if (isRecordingAudio) {
@@ -105,11 +133,27 @@ export const CreateSheet: React.FC = () => {
     } else {
       setIsRecordingAudio(true);
       setRecordedDuration(0);
+      speechAudioService.stopAudio();
+      setIsPlayingRecordedAudio(false);
       speechAudioService.startRecording(
-        (text) => text.trim() && setBody(text.trim()),
+        (text) => {
+          if (text.trim()) setBody(text.trim());
+        },
         (wf) => wf && wf.length > 0 && setRecordedWaveform(wf.slice(-20)),
         (sec) => setRecordedDuration(sec)
       );
+    }
+  };
+
+  const handleTogglePlayRecordedAudio = () => {
+    if (isPlayingRecordedAudio) {
+      speechAudioService.stopAudio();
+      setIsPlayingRecordedAudio(false);
+    } else if (recordedAudioUrl) {
+      setIsPlayingRecordedAudio(true);
+      speechAudioService.playAudio(recordedAudioUrl, () => {
+        setIsPlayingRecordedAudio(false);
+      });
     }
   };
 
@@ -514,11 +558,27 @@ export const CreateSheet: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>Your Thoughts</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={styles.inputLabel}>Your Thoughts</Text>
+                        <Pressable
+                          onPress={handleToggleDictateText}
+                          style={({ pressed }) => [
+                            styles.dictateInlineBtn,
+                            isDictatingText && styles.dictateInlineBtnActive,
+                            pressed && { opacity: 0.75 },
+                          ]}
+                          hitSlop={6}
+                        >
+                          {isDictatingText ? <MicOff size={13} color="#FFFFFF" /> : <Mic size={13} color={colors.brand.purple} />}
+                          <Text style={[styles.dictateInlineBtnText, isDictatingText && { color: '#FFFFFF' }]}>
+                            {isDictatingText ? 'Stop Dictating' : 'Speak to Write'}
+                          </Text>
+                        </Pressable>
+                      </View>
                       <TextInput
                         value={body}
                         onChangeText={setBody}
-                        placeholder="Write your note, thoughts, reflections..."
+                        placeholder="Write your note, or tap 'Speak to Write' to transcribe your voice..."
                         placeholderTextColor={colors.ink.faded}
                         multiline
                         numberOfLines={5}
@@ -705,39 +765,70 @@ export const CreateSheet: React.FC = () => {
                     </View>
 
                     <View style={styles.voiceCard}>
-                      <Mic size={24} color={colors.brand.purple} style={{ marginBottom: 6 }} />
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <Mic size={22} color={colors.brand.purple} />
+                        {isRecordingAudio && <Sparkles size={16} color="#EC4899" />}
+                      </View>
+                      
                       <Text style={styles.voiceCardTitle}>
                         {isRecordingAudio
-                          ? `Recording... (00:${recordedDuration < 10 ? '0' : ''}${recordedDuration})`
+                          ? `Recording & Transcribing... (00:${recordedDuration < 10 ? '0' : ''}${recordedDuration})`
                           : recordedAudioUrl
                           ? `Recorded (00:${recordedDuration < 10 ? '0' : ''}${recordedDuration}) ✓`
                           : 'Ready to Record'}
                       </Text>
+
                       <Text style={styles.voiceCardSub}>
                         {isRecordingAudio
-                          ? 'Speak into your microphone...'
+                          ? 'Speak freely — your words will convert to text below!'
                           : recordedAudioUrl
-                          ? 'Audio saved! Tap below to record again'
+                          ? 'Audio saved! You can preview audio or convert to note below.'
                           : 'Tap below to start speaking'}
                       </Text>
-                      <Pressable
-                        onPress={handleToggleRecordAudio}
-                        style={[styles.recordBtn, isRecordingAudio && styles.recordBtnActive]}
-                      >
-                        <Text style={styles.recordBtnText}>
-                          {isRecordingAudio ? 'Stop Recording' : recordedAudioUrl ? 'Record Again' : 'Start Recording'}
-                        </Text>
-                      </Pressable>
+
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 4, alignItems: 'center' }}>
+                        <Pressable
+                          onPress={handleToggleRecordAudio}
+                          style={[styles.recordBtn, isRecordingAudio && styles.recordBtnActive]}
+                        >
+                          <Text style={styles.recordBtnText}>
+                            {isRecordingAudio ? 'Stop Recording' : recordedAudioUrl ? 'Record Again' : 'Start Recording'}
+                          </Text>
+                        </Pressable>
+
+                        {!isRecordingAudio && recordedAudioUrl && (
+                          <Pressable
+                            onPress={handleTogglePlayRecordedAudio}
+                            style={styles.previewAudioBtn}
+                            hitSlop={6}
+                          >
+                            {isPlayingRecordedAudio ? <Pause size={13} color="#7C3AED" /> : <Play size={13} color="#7C3AED" fill="#7C3AED" />}
+                            <Text style={styles.previewAudioBtnText}>{isPlayingRecordedAudio ? 'Pause' : 'Play'}</Text>
+                          </Pressable>
+                        )}
+                      </View>
                     </View>
 
                     <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>Caption / Transcription (Optional)</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={styles.inputLabel}>Live Spoken Transcription</Text>
+                        {body.trim().length > 0 && (
+                          <Pressable
+                            onPress={() => setSelectedType('text')}
+                            style={styles.convertToNoteBtn}
+                            hitSlop={6}
+                          >
+                            <FileText size={12} color={colors.brand.purple} />
+                            <Text style={styles.convertToNoteBtnText}>Convert to Note</Text>
+                          </Pressable>
+                        )}
+                      </View>
                       <TextInput
                         value={body}
                         onChangeText={setBody}
-                        placeholder="Add a thought or note..."
+                        placeholder={isRecordingAudio ? 'Listening... Speak now and text will appear here' : 'Spoken text will appear here... you can also edit or type.'}
                         placeholderTextColor={colors.ink.faded}
-                        style={[styles.textInput, { minHeight: 60 }]}
+                        style={[styles.textInput, { minHeight: 75 }]}
                         multiline
                       />
                     </View>
@@ -1103,5 +1194,55 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  dictateInlineBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: '#EDE8FF',
+  },
+  dictateInlineBtnActive: {
+    backgroundColor: '#EF4444',
+  },
+  dictateInlineBtnText: {
+    fontFamily: typography.families.sans,
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.brand.purpleDark,
+  },
+  previewAudioBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#EDE8FF',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 58, 237, 0.2)',
+  },
+  previewAudioBtnText: {
+    fontFamily: typography.families.sans,
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: colors.brand.purpleDark,
+  },
+  convertToNoteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    backgroundColor: '#EDE8FF',
+  },
+  convertToNoteBtnText: {
+    fontFamily: typography.families.sans,
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: colors.brand.purpleDark,
   },
 });

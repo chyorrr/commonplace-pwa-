@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, TextInput, ScrollView, Image, Platform } from 'react-native';
 import { useApp } from '../../context/AppContext';
 import { colors } from '../../theme/colors';
@@ -13,10 +13,14 @@ import {
   AlignRight, 
   Palette, 
   Image as ImageIcon, 
-  ChevronDown 
+  ChevronDown,
+  Mic,
+  MicOff,
+  Sparkles
 } from 'lucide-react-native';
 import { DeviceImagePicker } from '../common/DeviceImagePicker';
 import { Tape } from '../common/Tape';
+import { speechAudioService } from '../../services/speechAndAudio';
 
 interface NoteEditorModalProps {
   visible: boolean;
@@ -44,6 +48,35 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   const [selectedTextColor, setSelectedTextColor] = useState('#1E1B24');
   const [fontSize, setFontSize] = useState<number>(18);
   const [attachedImageUrl, setAttachedImageUrl] = useState<string | null>(null);
+  const [isDictating, setIsDictating] = useState(false);
+  const stopDictateRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (!visible) {
+      if (stopDictateRef.current) {
+        stopDictateRef.current();
+        stopDictateRef.current = null;
+      }
+      setIsDictating(false);
+    }
+  }, [visible]);
+
+  const handleToggleDictate = () => {
+    if (isDictating) {
+      stopDictateRef.current?.();
+      stopDictateRef.current = null;
+      setIsDictating(false);
+    } else {
+      setIsDictating(true);
+      const stopFn = speechAudioService.startDictation(
+        (text) => {
+          setBodyText((prev) => (prev ? prev + ' ' + text : text));
+        },
+        (listening) => setIsDictating(listening)
+      );
+      stopDictateRef.current = stopFn;
+    }
+  };
 
   // Popover Toggles
   const [isColorPaletteOpen, setIsColorPaletteOpen] = useState(false);
@@ -230,7 +263,34 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
               >
                 <Palette size={16} color={colors.ink.secondary} />
               </Pressable>
+
+              {/* Voice-to-Text Speech Dictation Button */}
+              <Pressable
+                onPress={handleToggleDictate}
+                style={[
+                  styles.toolIconBtn,
+                  isDictating && styles.micDictateActive,
+                ]}
+                hitSlop={4}
+                accessibilityLabel="Dictate note with voice"
+              >
+                {isDictating ? (
+                  <MicOff size={16} color="#FFFFFF" />
+                ) : (
+                  <Mic size={16} color={colors.brand.purple} />
+                )}
+              </Pressable>
             </View>
+
+            {/* Dictation Banner Indicator when active */}
+            {isDictating && (
+              <View style={styles.dictateBanner}>
+                <View style={styles.dictatePill}>
+                  <View style={styles.dictateRedDot} />
+                  <Text style={styles.dictateBannerText}>Listening... Speak to transcribe into note</Text>
+                </View>
+              </View>
+            )}
 
             {/* Paper Tone Popover Bar */}
             {isPaperToneOpen && (
@@ -460,5 +520,33 @@ const styles = StyleSheet.create({
   },
   fontChipTextActive: {
     color: '#FFFFFF',
+  },
+  micDictateActive: {
+    backgroundColor: '#EF4444',
+  },
+  dictateBanner: {
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  dictatePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#FEE2E2',
+  },
+  dictateRedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+  },
+  dictateBannerText: {
+    fontFamily: typography.families.sans,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#B91C1C',
   },
 });
