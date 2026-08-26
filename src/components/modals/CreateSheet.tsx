@@ -15,12 +15,12 @@ import {
   Play,
   Pause,
   FileText,
-  Sparkles,
   Volume2
 } from 'lucide-react-native';
 import { Tape } from '../common/Tape';
 import { DeviceImagePicker } from '../common/DeviceImagePicker';
 import { speechAudioService } from '../../services/speechAndAudio';
+import { transcriptionService } from '../../services/transcriptionService';
 
 export const CreateSheet: React.FC = () => {
   const {
@@ -127,8 +127,19 @@ export const CreateSheet: React.FC = () => {
       if (res.waveform && res.waveform.length > 0) {
         setRecordedWaveform(res.waveform);
       }
-      if (res.transcript && res.transcript.trim()) {
-        setBody(res.transcript.trim());
+
+      let currentTranscript = (res.transcript || body || '').trim();
+      if (currentTranscript) {
+        setBody(currentTranscript);
+      }
+
+      // If audio recorded, run Whisper transcription if provider configured
+      if (res.audioUrl) {
+        transcriptionService.transcribeAudioBlob(res.audioUrl, currentTranscript).then((aiRes) => {
+          if (aiRes.transcript && aiRes.transcript.trim()) {
+            setBody(aiRes.transcript.trim());
+          }
+        }).catch(() => {});
       }
     } else {
       setIsRecordingAudio(true);
@@ -767,12 +778,26 @@ export const CreateSheet: React.FC = () => {
                     <View style={styles.voiceCard}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                         <Mic size={22} color={colors.brand.purple} />
-                        {isRecordingAudio && <Sparkles size={16} color="#EC4899" />}
+                        {isRecordingAudio && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, height: 16 }}>
+                            {recordedWaveform.slice(-6).map((amp, i) => (
+                              <View
+                                key={i}
+                                style={{
+                                  width: 2.5,
+                                  backgroundColor: colors.brand.purple,
+                                  borderRadius: 1.5,
+                                  height: Math.max(4, Math.round(amp * 16)),
+                                }}
+                              />
+                            ))}
+                          </View>
+                        )}
                       </View>
                       
                       <Text style={styles.voiceCardTitle}>
                         {isRecordingAudio
-                          ? `Recording & Transcribing... (00:${recordedDuration < 10 ? '0' : ''}${recordedDuration})`
+                          ? `Recording... (00:${recordedDuration < 10 ? '0' : ''}${recordedDuration})`
                           : recordedAudioUrl
                           ? `Recorded (00:${recordedDuration < 10 ? '0' : ''}${recordedDuration}) ✓`
                           : 'Ready to Record'}

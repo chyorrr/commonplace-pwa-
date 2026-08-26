@@ -29,12 +29,13 @@ import {
   FileText,
   Mic,
   MicOff,
-  Sparkles
+  Wand2
 } from 'lucide-react-native';
 import { Tape } from '../common/Tape';
 import { shareService } from '../../services/shareService';
 import { spotifyService } from '../../services/spotifyService';
 import { speechAudioService } from '../../services/speechAndAudio';
+import { transcriptionService } from '../../services/transcriptionService';
 import { DeviceImagePicker } from '../common/DeviceImagePicker';
 import { ChecklistItem, Pin } from '../../types';
 
@@ -57,6 +58,7 @@ export const PinDetailModal: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isDictatingEdit, setIsDictatingEdit] = useState(false);
+  const [isTranscribingPin, setIsTranscribingPin] = useState(false);
   const stopDictateRef = useRef<(() => void) | null>(null);
 
   const pin = activePinDetail;
@@ -189,6 +191,25 @@ export const PinDetailModal: React.FC = () => {
       addToDesk(newNote as any);
     }
     handleClose();
+  };
+
+  const handleTranscribePinAudio = async () => {
+    if (!pin || !(pin as any).audioUrl) return;
+    setIsTranscribingPin(true);
+    try {
+      const currentText = (pin as any).transcriptExcerpt || (pin as any).transcription || '';
+      const result = await transcriptionService.transcribeAudioBlob((pin as any).audioUrl, currentText);
+      if (result.transcript && result.transcript.trim()) {
+        updatePin(pin.id, {
+          transcriptExcerpt: result.transcript.trim(),
+          transcription: result.transcript.trim(),
+        } as any);
+      }
+    } catch (e) {
+      console.warn('Transcribe error:', e);
+    } finally {
+      setIsTranscribingPin(false);
+    }
   };
 
   const handleMoveToBoard = (targetBoardId: string) => {
@@ -1114,9 +1135,23 @@ export const PinDetailModal: React.FC = () => {
 
                   {/* Transcript Content */}
                   <View style={styles.voiceTranscriptWrap}>
-                    <Text style={styles.voiceTranscriptHeading}>Spoken Transcription</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={styles.voiceTranscriptHeading}>Spoken Transcription</Text>
+                      {(pin as any).audioUrl && (
+                        <Pressable
+                          onPress={handleTranscribePinAudio}
+                          style={({ pressed }) => [styles.quickTranscribeBtn, pressed && { opacity: 0.8 }]}
+                          hitSlop={6}
+                        >
+                          <Wand2 size={10} color={colors.brand.purple} />
+                          <Text style={styles.quickTranscribeBtnText}>
+                            {isTranscribingPin ? 'Transcribing...' : 'Auto-Transcribe'}
+                          </Text>
+                        </Pressable>
+                      )}
+                    </View>
                     <Text style={styles.detailTranscript}>
-                      {pin.transcriptExcerpt || (pin as any).transcription || 'No transcription available.'}
+                      {(pin as any).transcriptExcerpt || (pin as any).transcription || 'No transcription yet. Tap "Auto-Transcribe" above.'}
                     </Text>
                   </View>
 
@@ -1914,5 +1949,20 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.ink.handwrittenFaded,
     marginLeft: 'auto',
+  },
+  quickTranscribeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EDE8FF',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+  },
+  quickTranscribeBtnText: {
+    fontFamily: typography.families.sans,
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.brand.purpleDark,
   },
 });

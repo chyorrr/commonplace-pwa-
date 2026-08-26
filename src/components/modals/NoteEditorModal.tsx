@@ -15,8 +15,7 @@ import {
   Image as ImageIcon, 
   ChevronDown,
   Mic,
-  MicOff,
-  Sparkles
+  MicOff
 } from 'lucide-react-native';
 import { DeviceImagePicker } from '../common/DeviceImagePicker';
 import { Tape } from '../common/Tape';

@@ -25,11 +25,15 @@ import {
   Wifi,
   WifiOff,
   Database,
-  Bookmark
+  Bookmark,
+  Mic,
+  Sparkles,
+  Key
 } from 'lucide-react-native';
 import { useApp, ThemeMode } from '../../context/AppContext';
 import { Tape } from '../common/Tape';
 import { reminderService } from '../../services/reminderService';
+import { transcriptionService, TranscriptionProvider } from '../../services/transcriptionService';
 import { pickImageFromDevice } from '../../utils/imagePicker';
 import { DeviceImagePicker } from '../common/DeviceImagePicker';
 import { UserAvatar } from '../common/UserAvatar';
@@ -76,6 +80,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
   const [appleMusicUrl, setAppleMusicUrl] = useState('');
   const [isImportingMusic, setIsImportingMusic] = useState(false);
   const [musicImportSuccess, setMusicImportSuccess] = useState('');
+
+  // AI Voice Transcription Settings
+  const [transcriptionProvider, setTranscriptionProvider] = useState<TranscriptionProvider>(
+    transcriptionService.getConfig().provider
+  );
+  const [transcriptionApiKey, setTranscriptionApiKey] = useState(
+    transcriptionService.getConfig().apiKey || ''
+  );
+  const [isWhisperSaved, setIsWhisperSaved] = useState(false);
+
+  const handleSaveTranscriptionSettings = () => {
+    transcriptionService.saveConfig({
+      provider: transcriptionProvider,
+      apiKey: transcriptionApiKey.trim(),
+    });
+    setIsWhisperSaved(true);
+    setTimeout(() => setIsWhisperSaved(false), 2200);
+  };
 
   const handleSaveProfile = () => {
     updateUserProfile(name, email, avatarUrl, bio);
@@ -579,6 +601,95 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                     <Text style={styles.testNotifText}>Install App (Android & iPhone)</Text>
                   </Pressable>
                 )}
+              </View>
+            </View>
+
+            {/* Voice Transcription Settings */}
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionTitle}>Voice Transcription</Text>
+              <View style={styles.cardContainer}>
+                <View style={styles.notificationRow}>
+                  <View style={[styles.notifIconWrap, { backgroundColor: '#EDE8FF' }]}>
+                    <Mic size={18} color={colors.brand.purple} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>Speech-to-Text Engine</Text>
+                    <Text style={styles.cardSub}>
+                      Convert voice recordings and spoken memos into accurate, punctuated text.
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Provider Selector Chips */}
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                  <Pressable
+                    onPress={() => setTranscriptionProvider('browser')}
+                    style={[
+                      styles.providerChip,
+                      transcriptionProvider === 'browser' && styles.providerChipActive,
+                    ]}
+                  >
+                    <Text style={[styles.providerChipText, transcriptionProvider === 'browser' && styles.providerChipTextActive]}>
+                      Live Browser Speech
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => setTranscriptionProvider('groq')}
+                    style={[
+                      styles.providerChip,
+                      transcriptionProvider === 'groq' && styles.providerChipActive,
+                    ]}
+                  >
+                    <Text style={[styles.providerChipText, transcriptionProvider === 'groq' && styles.providerChipTextActive]}>
+                      Groq Whisper (Instant 0.2s)
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => setTranscriptionProvider('openai')}
+                    style={[
+                      styles.providerChip,
+                      transcriptionProvider === 'openai' && styles.providerChipActive,
+                    ]}
+                  >
+                    <Text style={[styles.providerChipText, transcriptionProvider === 'openai' && styles.providerChipTextActive]}>
+                      OpenAI Whisper
+                    </Text>
+                  </Pressable>
+                </View>
+
+                {/* API Key Input if Groq or OpenAI */}
+                {transcriptionProvider !== 'browser' && (
+                  <View style={{ marginTop: 12, gap: 6 }}>
+                    <Text style={{ fontFamily: typography.families.sans, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', color: colors.ink.secondary }}>
+                      {transcriptionProvider === 'groq' ? 'Groq API Key (Free)' : 'OpenAI API Key'}
+                    </Text>
+                    <TextInput
+                      value={transcriptionApiKey}
+                      onChangeText={setTranscriptionApiKey}
+                      placeholder={transcriptionProvider === 'groq' ? 'Paste your Groq Key (gsk_...)' : 'sk-...'}
+                      placeholderTextColor={colors.ink.faded}
+                      secureTextEntry
+                      style={styles.textInput}
+                    />
+                    <Text style={{ fontFamily: typography.families.sans, fontSize: 11, color: colors.ink.tertiary, lineHeight: 16 }}>
+                      {transcriptionProvider === 'groq'
+                        ? 'Get your 100% free Groq API key at console.groq.com/keys for instant 200ms Whisper transcription.'
+                        : 'Enter your OpenAI key to transcribe audio files with Whisper-1.'}
+                    </Text>
+                  </View>
+                )}
+
+                <Pressable
+                  onPress={handleSaveTranscriptionSettings}
+                  style={({ pressed }) => [styles.testNotifBtn, { marginTop: 12 }, pressed && { opacity: 0.85 }]}
+                >
+                  <Check size={14} color={colors.brand.purpleDark} />
+                  <Text style={styles.testNotifText}>
+                    {isWhisperSaved ? 'Saved Transcription Settings ✓' : 'Save Voice Settings'}
+                  </Text>
+                </Pressable>
               </View>
             </View>
 
@@ -1343,5 +1454,26 @@ const styles = StyleSheet.create({
     fontSize: 9.5,
     color: colors.ink.tertiary,
     lineHeight: 13,
+  },
+  providerChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: '#F8F6FD',
+    borderWidth: 1,
+    borderColor: 'rgba(124, 58, 237, 0.15)',
+  },
+  providerChipActive: {
+    backgroundColor: colors.brand.purple,
+    borderColor: colors.brand.purple,
+  },
+  providerChipText: {
+    fontFamily: typography.families.sans,
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: colors.brand.purpleDark,
+  },
+  providerChipTextActive: {
+    color: '#FFFFFF',
   },
 });

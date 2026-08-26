@@ -11,13 +11,13 @@ import {
   Check, 
   FileText, 
   ListTodo, 
-  Sparkles, 
   Volume2, 
   Globe, 
   AlertCircle 
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
 import { speechAudioService } from '../../services/speechAndAudio';
+import { transcriptionService } from '../../services/transcriptionService';
 
 interface VoiceNoteModalProps {
   visible: boolean;
@@ -37,6 +37,7 @@ export const VoiceNoteModal: React.FC<VoiceNoteModalProps> = ({ visible, onClose
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState('en-US');
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const [isTranscribingWithAI, setIsTranscribingWithAI] = useState(false);
 
   const supportedLanguages = speechAudioService.getSupportedLanguages();
 
@@ -51,10 +52,12 @@ export const VoiceNoteModal: React.FC<VoiceNoteModalProps> = ({ visible, onClose
       setIsPlayingAudio(false);
       setIsEditingTranscript(false);
       setErrorMessage(null);
+      setIsTranscribingWithAI(false);
     } else {
       speechAudioService.stopRecording(transcript);
       speechAudioService.stopAudio();
       setIsPlayingAudio(false);
+      setIsTranscribingWithAI(false);
     }
 
     return () => {
@@ -105,8 +108,30 @@ export const VoiceNoteModal: React.FC<VoiceNoteModalProps> = ({ visible, onClose
     if (res.waveform) {
       setLiveWaveform(res.waveform);
     }
-    if (res.transcript && !transcript) {
-      setTranscript(res.transcript);
+
+    let initialTranscript = (res.transcript || transcript || '').trim();
+    if (initialTranscript) {
+      setTranscript(initialTranscript);
+    }
+
+    // If audio was captured, run AI Whisper / post-transcription pipeline
+    if (res.audioUrl) {
+      setIsTranscribingWithAI(true);
+      try {
+        const langCode = selectedLanguage.split('-')[0];
+        const aiResult = await transcriptionService.transcribeAudioBlob(
+          res.audioUrl,
+          initialTranscript,
+          langCode
+        );
+        if (aiResult.transcript && aiResult.transcript.trim()) {
+          setTranscript(aiResult.transcript.trim());
+        }
+      } catch (err) {
+        console.warn('AI Transcription Notice:', err);
+      } finally {
+        setIsTranscribingWithAI(false);
+      }
     }
   };
 
@@ -390,9 +415,10 @@ export const VoiceNoteModal: React.FC<VoiceNoteModalProps> = ({ visible, onClose
             <View style={styles.transcriptSection}>
               <View style={styles.transcriptHeader}>
                 <View style={styles.transcriptionBadge}>
-                  <Sparkles size={14} color={colors.brand.purple} />
-                  <Text style={styles.transcriptTitle}>Live Text Transcription</Text>
+                  <View style={[styles.statusDot, isRecording ? styles.statusDotRecording : styles.statusDotReady]} />
+                  <Text style={styles.transcriptTitle}>Live Spoken Transcription</Text>
                 </View>
+
                 <Pressable
                   onPress={() => setIsEditingTranscript(!isEditingTranscript)}
                   style={styles.editToggleBtn}
@@ -403,6 +429,27 @@ export const VoiceNoteModal: React.FC<VoiceNoteModalProps> = ({ visible, onClose
               </View>
 
               <View style={styles.transcriptCard}>
+                {/* Cool small in-box live audio equalizer & recording pill */}
+                {isRecording && (
+                  <View style={styles.inBoxLiveBadge}>
+                    <View style={styles.inBoxLivePill}>
+                      <View style={styles.livePulseDot} />
+                      <View style={styles.miniEqualizerRow}>
+                        {liveWaveform.slice(-7).map((amp, i) => (
+                          <View
+                            key={i}
+                            style={[
+                              styles.miniEqualizerBar,
+                              { height: Math.max(4, Math.round(amp * 16)) },
+                            ]}
+                          />
+                        ))}
+                      </View>
+                      <Text style={styles.inBoxLiveText}>Listening...</Text>
+                    </View>
+                  </View>
+                )}
+
                 {isEditingTranscript ? (
                   <TextInput
                     value={transcript}
@@ -415,12 +462,14 @@ export const VoiceNoteModal: React.FC<VoiceNoteModalProps> = ({ visible, onClose
                   />
                 ) : (
                   <Text style={[styles.transcriptText, !transcript && styles.transcriptPlaceholder]}>
-                    {transcript ||
-                      (isRecording
-                        ? 'Listening... Speak into your microphone and words will appear here!'
-                        : hasStartedEver
-                        ? 'No speech recognized yet. You can tap Edit above to type, or tap microphone to speak again.'
-                        : 'Tap the microphone button above and speak. Your voice will automatically turn into text here.')}
+                    {isTranscribingWithAI
+                      ? 'Transcribing audio... please wait a moment...'
+                      : transcript ||
+                        (isRecording
+                          ? 'Listening... Speak into your microphone and words will appear here!'
+                          : hasStartedEver
+                          ? 'No speech recognized yet. You can tap Edit above to type, or tap the microphone to record again.'
+                          : 'Tap the purple microphone above to speak. Your words will transcribe here.')}
                   </Text>
                 )}
               </View>
@@ -828,5 +877,47 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: colors.ink.secondary,
+  },
+  inBoxLiveBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 12,
+    zIndex: 10,
+  },
+  inBoxLivePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F3E8FF',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 58, 237, 0.2)',
+  },
+  livePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+  },
+  miniEqualizerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    height: 16,
+  },
+  miniEqualizerBar: {
+    width: 2.5,
+    backgroundColor: colors.brand.purple,
+    borderRadius: 1.5,
+  },
+  inBoxLiveText: {
+    fontFamily: typography.families.sans,
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.brand.purpleDark,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
 });

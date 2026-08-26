@@ -63,9 +63,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   content: {
-    paddingTop: 18,
-    paddingBottom: 40,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+    paddingTop: 16,
+    paddingBottom: 60,
   },
   heroCard: {
     padding: 18,

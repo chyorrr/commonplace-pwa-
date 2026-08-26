@@ -319,8 +319,8 @@ const styles = StyleSheet.create({
   floatingNavCapsule: {
     position: 'absolute',
     right: 12,
-    top: (Platform.OS === 'web' ? 'max(24px, env(safe-area-inset-top, 24px))' : 24) as any,
-    bottom: (Platform.OS === 'web' ? 'max(24px, env(safe-area-inset-bottom, 24px))' : 24) as any,
+    top: 20,
+    bottom: 20,
     width: 66,
     borderRadius: 28,
     backgroundColor: '#FFFFFF',
