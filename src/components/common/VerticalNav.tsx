@@ -16,6 +16,7 @@ import {
   Stamp,
   X
 } from 'lucide-react-native';
+import { UserAvatar } from './UserAvatar';
 
 export const VerticalNav: React.FC = () => {
   const {
@@ -244,16 +245,17 @@ export const VerticalNav: React.FC = () => {
       {isOpen && (
         <Animated.View style={[styles.bottomLeftWidget, { opacity: opacityAnim }]}>
           <View style={styles.profileAvatarWrap}>
-            <Image
-              source={{ uri: user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80' }}
-              style={styles.profileImg}
+            <UserAvatar
+              avatarUrl={user?.avatarUrl}
+              name={user?.name || 'User'}
+              size={36}
             />
             <View style={styles.onlineDot} />
           </View>
 
           <View style={styles.profileTextInfo}>
-            <Text style={styles.profileNameText} numberOfLines={1}>{user?.name || 'Harsh Naik'}</Text>
-            <Text style={styles.profileStatusText}>Online ♡</Text>
+            <Text style={styles.profileNameText} numberOfLines={1}>{user?.name || 'User'}</Text>
+            <Text style={styles.profileStatusText}>Active</Text>
           </View>
 
           <Pressable

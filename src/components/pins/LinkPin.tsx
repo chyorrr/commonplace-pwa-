@@ -13,6 +13,7 @@ interface LinkPinProps {
 export const LinkPin: React.FC<LinkPinProps> = ({ pin, onPress }) => {
   return (
     <PaperCard
+      pinId={pin.id}
       rotation={pin.rotation}
       paperTone="linen"
       tapeStyle={pin.tapeStyle || 'none'}

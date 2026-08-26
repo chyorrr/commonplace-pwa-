@@ -146,10 +146,7 @@ class ReminderService {
     }
   }
 
-  public async sendNotification(title: string, body: string, icon?: string): Promise<boolean> {
-    this.playChimeSound();
-
-    // 1. In-App Visual Toast Banner
+  public showToast(title: string, body: string) {
     const toastPayload: InAppToastPayload = {
       id: `toast-${Date.now()}`,
       title,
@@ -160,6 +157,13 @@ class ReminderService {
         fn(toastPayload);
       } catch (e) {}
     });
+  }
+
+  public async sendNotification(title: string, body: string, icon?: string): Promise<boolean> {
+    this.playChimeSound();
+
+    // 1. In-App Visual Toast Banner
+    this.showToast(title, body);
 
     // 2. Native iOS / Android Notification via Expo Notifications
     if (Platform.OS !== 'web' && ExpoNotifications?.scheduleNotificationAsync) {
@@ -216,10 +220,10 @@ class ReminderService {
   public async sendTestNotification(): Promise<boolean> {
     const granted = await this.requestNotificationPermission();
     return this.sendNotification(
-      'Commonplace ♡ Reminder Alert',
+      'Commonplace Reminder',
       granted 
-        ? 'Your schedule reminders and notifications are working on your device!'
-        : 'Reminder alert chime is active! (Allow system notifications in browser settings for background push)'
+        ? 'Schedule reminders and notifications are active.'
+        : 'Reminder alert chime is active. Enable browser notifications for background push.'
     );
   }
 
@@ -256,7 +260,7 @@ class ReminderService {
       if (msUntilDue > 0 && msUntilDue <= 24 * 60 * 60 * 1000) {
         const timeoutId = setTimeout(() => {
           this.sendNotification(
-            `🔔 ${r.title}`,
+            r.title,
             `${r.category ? `${r.category} · ` : ''}${r.startTime || 'Scheduled Time'}`
           );
           if (this.onTriggerCallback) {
@@ -354,7 +358,7 @@ class ReminderService {
 
       if (isDue) {
         this.sendNotification(
-          `🔔 ${r.title}`,
+          r.title,
           `${r.category ? `${r.category} · ` : ''}${r.startTime || 'Scheduled Time'}`
         );
 

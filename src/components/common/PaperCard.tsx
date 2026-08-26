@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, Pressable, Image } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, StyleSheet, Pressable, Image, Platform } from 'react-native';
 import { colors } from '../../theme/colors';
 import { shadows } from '../../theme/shadows';
 import { Tape } from './Tape';
@@ -17,7 +17,174 @@ export interface PaperCardProps {
   isLifted?: boolean;
   stickers?: AttachedSticker[];
   borderStyle?: 'subtle' | 'deckle' | 'none';
+  pinId?: string;
 }
+
+interface DraggableStickerProps {
+  sticker: AttachedSticker;
+  imageUrl: string;
+  cardRef: React.RefObject<any>;
+  pinId?: string;
+  onStickerMove: (stickerId: string, xPercent: number, yPercent: number) => void;
+}
+
+const DraggableSticker: React.FC<DraggableStickerProps> = ({
+  sticker,
+  imageUrl,
+  cardRef,
+  pinId,
+  onStickerMove,
+}) => {
+  const [pos, setPos] = useState({ x: sticker.xPercent, y: sticker.yPercent });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number } | null>(null);
+  const currentPosRef = useRef({ x: sticker.xPercent, y: sticker.yPercent });
+
+  // Sync with prop updates when not dragging
+  useEffect(() => {
+    if (!isDragging) {
+      setPos({ x: sticker.xPercent, y: sticker.yPercent });
+      currentPosRef.current = { x: sticker.xPercent, y: sticker.yPercent };
+    }
+  }, [sticker.xPercent, sticker.yPercent, isDragging]);
+
+  const baseSize =
+    sticker.sizePreset === 'sm'
+      ? 32
+      : sticker.sizePreset === 'lg'
+      ? 64
+      : sticker.sizePreset === 'xl'
+      ? 84
+      : 48;
+  const finalDim = Math.round(baseSize * (sticker.scale || 1));
+
+  const handlePointerDown = (e: any) => {
+    e.stopPropagation?.();
+    const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+    const clientY = e.clientY ?? e.touches?.[0]?.clientY;
+    if (clientX === undefined || clientY === undefined) return;
+
+    setIsDragging(true);
+    dragStartRef.current = {
+      startX: clientX,
+      startY: clientY,
+      initX: currentPosRef.current.x,
+      initY: currentPosRef.current.y,
+    };
+
+    const handlePointerMove = (moveEvent: any) => {
+      if (!dragStartRef.current || !cardRef.current) return;
+      const curX = moveEvent.clientX ?? moveEvent.touches?.[0]?.clientX;
+      const curY = moveEvent.clientY ?? moveEvent.touches?.[0]?.clientY;
+      if (curX === undefined || curY === undefined) return;
+
+      const cardEl = cardRef.current;
+      const rect = cardEl.getBoundingClientRect ? cardEl.getBoundingClientRect() : null;
+      if (!rect || rect.width === 0 || rect.height === 0) return;
+
+      const dx = ((curX - dragStartRef.current.startX) / rect.width) * 100;
+      const dy = ((curY - dragStartRef.current.startY) / rect.height) * 100;
+
+      const newX = Math.max(0, Math.min(85, Math.round((dragStartRef.current.initX + dx) * 10) / 10));
+      const newY = Math.max(0, Math.min(85, Math.round((dragStartRef.current.initY + dy) * 10) / 10));
+
+      currentPosRef.current = { x: newX, y: newY };
+      setPos({ x: newX, y: newY });
+    };
+
+    const handlePointerUp = () => {
+      setIsDragging(false);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('pointermove', handlePointerMove);
+        window.removeEventListener('pointerup', handlePointerUp);
+        window.removeEventListener('touchmove', handlePointerMove);
+        window.removeEventListener('touchend', handlePointerUp);
+      }
+
+      if (onStickerMove) {
+        onStickerMove(sticker.id, currentPosRef.current.x, currentPosRef.current.y);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+      window.addEventListener('touchmove', handlePointerMove, { passive: false });
+      window.addEventListener('touchend', handlePointerUp);
+    }
+  };
+
+  if (Platform.OS === 'web') {
+    return (
+      <div
+        onPointerDown={handlePointerDown}
+        onTouchStart={handlePointerDown}
+        style={{
+          position: 'absolute',
+          width: finalDim,
+          height: finalDim,
+          left: `${pos.x}%`,
+          top: `${pos.y}%`,
+          transform: `rotate(${sticker.rotation || 0}deg) scale(${isDragging ? 1.15 : 1})`,
+          zIndex: isDragging ? 100 : 30,
+          cursor: isDragging ? 'grabbing' : 'grab',
+          touchAction: 'none',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+          filter: isDragging ? 'drop-shadow(0 8px 14px rgba(45, 27, 78, 0.35))' : 'none',
+        }}
+      >
+        <View
+          style={[
+            styles.dieCutContourWrap,
+            sticker.contourStyle === 'glow' && styles.contourGlow,
+            sticker.contourStyle === 'stamp' && styles.contourStamp,
+            sticker.contourStyle === 'badge' && styles.contourBadge,
+          ]}
+        >
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.stickerImg}
+            resizeMode="cover"
+          />
+        </View>
+      </div>
+    );
+  }
+
+  // React Native Native Fallback
+  return (
+    <Pressable
+      onPress={(e) => e.stopPropagation?.()}
+      style={[
+        styles.placedSticker,
+        {
+          width: finalDim,
+          height: finalDim,
+          left: `${pos.x}%`,
+          top: `${pos.y}%`,
+          transform: [{ rotate: `${sticker.rotation || 0}deg` }],
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.dieCutContourWrap,
+          sticker.contourStyle === 'glow' && styles.contourGlow,
+          sticker.contourStyle === 'stamp' && styles.contourStamp,
+          sticker.contourStyle === 'badge' && styles.contourBadge,
+        ]}
+      >
+        <Image
+          source={{ uri: imageUrl }}
+          style={styles.stickerImg}
+          resizeMode="cover"
+        />
+      </View>
+    </Pressable>
+  );
+};
 
 export const PaperCard: React.FC<PaperCardProps> = ({
   children,
@@ -30,8 +197,10 @@ export const PaperCard: React.FC<PaperCardProps> = ({
   isLifted = false,
   stickers = [],
   borderStyle = 'subtle',
+  pinId,
 }) => {
-  const { stickers: stickerLibrary } = useApp();
+  const { stickers: stickerLibrary, updateStickerPosition } = useApp();
+  const cardContainerRef = useRef<any>(null);
 
   const getBackgroundColor = () => {
     switch (paperTone) {
@@ -65,8 +234,15 @@ export const PaperCard: React.FC<PaperCardProps> = ({
     return stickerLibrary.find((s) => s.id === stickerId)?.imageUrl;
   };
 
+  const handleStickerMove = (stickerAttachmentId: string, xPercent: number, yPercent: number) => {
+    if (pinId && updateStickerPosition) {
+      updateStickerPosition(pinId, stickerAttachmentId, xPercent, yPercent);
+    }
+  };
+
   return (
     <Pressable
+      ref={cardContainerRef}
       onPress={onPress}
       disabled={!onPress}
       style={({ pressed }) => [
@@ -92,50 +268,20 @@ export const PaperCard: React.FC<PaperCardProps> = ({
       {/* Card Content */}
       <View style={styles.innerContent}>{children}</View>
 
-      {/* User placed stickers with contour cut & dynamic sizing */}
+      {/* User placed stickers with interactive press & hold movement */}
       {stickers.map((st) => {
         const url = getStickerImage(st.stickerId);
         if (!url) return null;
 
-        const baseSize =
-          st.sizePreset === 'sm'
-            ? 32
-            : st.sizePreset === 'lg'
-            ? 64
-            : st.sizePreset === 'xl'
-            ? 84
-            : 48;
-        const finalDim = Math.round(baseSize * (st.scale || 1));
-
         return (
-          <View
+          <DraggableSticker
             key={st.id}
-            style={[
-              styles.placedSticker,
-              {
-                width: finalDim,
-                height: finalDim,
-                left: `${st.xPercent}%`,
-                top: `${st.yPercent}%`,
-                transform: [{ rotate: `${st.rotation || 0}deg` }],
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.dieCutContourWrap,
-                st.contourStyle === 'glow' && styles.contourGlow,
-                st.contourStyle === 'stamp' && styles.contourStamp,
-                st.contourStyle === 'badge' && styles.contourBadge,
-              ]}
-            >
-              <Image
-                source={{ uri: url }}
-                style={styles.stickerImg}
-                resizeMode="cover"
-              />
-            </View>
-          </View>
+            sticker={st}
+            imageUrl={url}
+            cardRef={cardContainerRef}
+            pinId={pinId}
+            onStickerMove={handleStickerMove}
+          />
         );
       })}
     </Pressable>
@@ -165,7 +311,6 @@ const styles = StyleSheet.create({
   placedSticker: {
     position: 'absolute',
     zIndex: 30,
-    pointerEvents: 'none',
   },
   dieCutContourWrap: {
     width: '100%',

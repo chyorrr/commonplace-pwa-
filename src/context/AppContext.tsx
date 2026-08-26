@@ -85,6 +85,8 @@ export interface AppContextType {
   deleteCustomSticker: (id: string) => void;
   addStickerToPin: (arg1: string, arg2: string, arg3?: any, arg4?: any, options?: any) => void;
   attachStickerToPin: (arg1: string, arg2: string, arg3?: any, arg4?: any, options?: any) => void;
+  updateStickerPosition: (pinId: string, stickerAttachmentId: string, xPercent: number, yPercent: number) => void;
+  removeStickerFromPin: (pinId: string, stickerAttachmentId: string) => void;
 
   // Reminders & Schedule
   reminders: ReminderItem[];
@@ -185,21 +187,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 1. Auth & Accounts State
   const [savedAccounts, setSavedAccounts] = useState<UserProfile[]>(() => {
-    const raw = safeStorage.getItem('commonplace_accounts_v6');
+    const raw = safeStorage.getItem(STORAGE_KEYS.ACCOUNTS);
     if (raw) {
       try {
         return JSON.parse(raw);
       } catch (e) {}
     }
-    return [
-      {
-        id: 'usr-1',
-        email: 'harsh@commonplace.app',
-        name: 'Harsh Naik',
-        bio: 'Cozy Scrapbooker ♡',
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-      },
-    ];
+    return [];
   });
 
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -222,9 +216,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setUser(newUser);
     safeStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(newUser));
     setSavedAccounts((prev) => {
-      const exists = prev.find((a) => a.id === newUser.id || a.email === newUser.email);
+      const exists = prev.find((a) => a.id === newUser.id || a.email.toLowerCase() === newUser.email.toLowerCase());
       const updated = exists
-        ? prev.map((a) => (a.id === newUser.id || a.email === newUser.email ? newUser : a))
+        ? prev.map((a) => (a.id === newUser.id || a.email.toLowerCase() === newUser.email.toLowerCase() ? newUser : a))
         : [newUser, ...prev];
       safeStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(updated));
       return updated;
@@ -257,15 +251,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setUser((prev) => {
       const updated: UserProfile = {
         id: prev?.id || `usr-${Date.now()}`,
-        name: name.trim() || 'Harsh Naik',
-        email: email.trim() || 'harsh@commonplace.app',
+        name: name.trim() || prev?.name || 'User',
+        email: email.trim() || prev?.email || '',
         avatarUrl: avatarUrl || prev?.avatarUrl,
         bio: bio !== undefined ? bio : prev?.bio,
       };
       safeStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updated));
       setSavedAccounts((all) => {
         const next = all.map((a) => (a.id === updated.id ? updated : a));
-        safeStorage.setItem('commonplace_accounts_v6', JSON.stringify(next));
+        safeStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(next));
         return next;
       });
       return updated;
@@ -672,6 +666,81 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
   };
 
+  const updateStickerPosition = (pinId: string, stickerAttachmentId: string, xPercent: number, yPercent: number) => {
+    const clampedX = Math.max(0, Math.min(90, Math.round(xPercent * 10) / 10));
+    const clampedY = Math.max(0, Math.min(90, Math.round(yPercent * 10) / 10));
+
+    setBoards((prev) =>
+      prev.map((board) => ({
+        ...board,
+        pins: board.pins.map((p) => {
+          if (p.id === pinId && p.stickers) {
+            return {
+              ...p,
+              stickers: p.stickers.map((st) =>
+                st.id === stickerAttachmentId
+                  ? { ...st, xPercent: clampedX, yPercent: clampedY }
+                  : st
+              ),
+            };
+          }
+          return p;
+        }),
+      }))
+    );
+
+    setDeskItems((prev) =>
+      prev.map((item) => {
+        if (item.pin.id === pinId && item.pin.stickers) {
+          return {
+            ...item,
+            pin: {
+              ...item.pin,
+              stickers: item.pin.stickers.map((st) =>
+                st.id === stickerAttachmentId
+                  ? { ...st, xPercent: clampedX, yPercent: clampedY }
+                  : st
+              ),
+            },
+          };
+        }
+        return item;
+      })
+    );
+
+    if (activePinDetail?.id === pinId && activePinDetail.stickers) {
+      setActivePinDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              stickers: prev.stickers?.map((st) =>
+                st.id === stickerAttachmentId
+                  ? { ...st, xPercent: clampedX, yPercent: clampedY }
+                  : st
+              ),
+            }
+          : null
+      );
+    }
+  };
+
+  const removeStickerFromPin = (pinId: string, stickerAttachmentId: string) => {
+    setBoards((prev) =>
+      prev.map((board) => ({
+        ...board,
+        pins: board.pins.map((p) => {
+          if (p.id === pinId && p.stickers) {
+            return {
+              ...p,
+              stickers: p.stickers.filter((st) => st.id !== stickerAttachmentId),
+            };
+          }
+          return p;
+        }),
+      }))
+    );
+  };
+
   const updatePinPosition = (boardId: string, pinId: string, transform: Partial<FreeformTransform>) => {
     setBoards((prev) =>
       prev.map((b) => {
@@ -998,6 +1067,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         deleteCustomSticker: (id: string) => setStickers((prev) => prev.filter((s) => s.id !== id)),
         addStickerToPin: attachStickerToPin,
         attachStickerToPin,
+        updateStickerPosition,
+        removeStickerFromPin,
         reminders,
         addReminder,
         updateReminder,

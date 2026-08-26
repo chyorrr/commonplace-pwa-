@@ -13,6 +13,7 @@ interface CollagePinProps {
 export const CollagePin: React.FC<CollagePinProps> = ({ pin, onPress }) => {
   return (
     <PaperCard
+      pinId={pin.id}
       rotation={pin.rotation}
       paperTone="parchment"
       tapeStyle={pin.tapeStyle || 'none'}

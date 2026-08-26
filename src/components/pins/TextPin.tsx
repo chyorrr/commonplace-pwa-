@@ -13,6 +13,7 @@ interface TextPinProps {
 export const TextPin: React.FC<TextPinProps> = ({ pin, onPress }) => {
   return (
     <PaperCard
+      pinId={pin.id}
       rotation={pin.rotation}
       paperTone={pin.paperTone || 'cream'}
       tapeStyle={pin.tapeStyle || 'none'}

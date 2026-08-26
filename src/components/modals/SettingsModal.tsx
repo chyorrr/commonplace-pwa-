@@ -32,6 +32,8 @@ import { Tape } from '../common/Tape';
 import { reminderService } from '../../services/reminderService';
 import { pickImageFromDevice } from '../../utils/imagePicker';
 import { DeviceImagePicker } from '../common/DeviceImagePicker';
+import { UserAvatar } from '../common/UserAvatar';
+import { AVATAR_PRESETS } from '../../data/avatarPresets';
 import { isStandalone, isIOS } from '../../utils/pwaUtils';
 
 interface SettingsModalProps {
@@ -62,9 +64,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
   } = useApp();
 
   // Profile Edit State
-  const [name, setName] = useState(user?.name || 'Harsh Naik');
-  const [email, setEmail] = useState(user?.email || 'harsh@commonplace.app');
-  const [bio, setBio] = useState(user?.bio || 'Cozy Scrapbooker ♡');
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [bio, setBio] = useState(user?.bio || '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '');
   const [isSavedAlert, setIsSavedAlert] = useState(false);
 
@@ -271,21 +273,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
               <Text style={styles.sectionTitle}>Profile & Account</Text>
               <View style={styles.cardContainer}>
                 <View style={styles.profileHeaderRow}>
-                  <DeviceImagePicker
-                    onImageSelected={(base64) => {
-                      setAvatarUrl(base64);
-                      updateUserProfile(name, email, base64, bio);
-                    }}
-                    style={styles.avatarPicker}
-                  >
-                    <Image
-                      source={{ uri: avatarUrl || user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
-                      style={styles.avatarImage}
+                  <View style={{ alignItems: 'center' }}>
+                    <UserAvatar
+                      avatarUrl={avatarUrl || user?.avatarUrl}
+                      name={name || 'User'}
+                      size={54}
                     />
-                    <View style={styles.cameraBadge}>
+                    <DeviceImagePicker
+                      onImageSelected={(base64) => {
+                        setAvatarUrl(base64);
+                        updateUserProfile(name, email, base64, bio);
+                      }}
+                      style={styles.avatarPickerButton}
+                    >
                       <Camera size={11} color="#FFF" />
-                    </View>
-                  </DeviceImagePicker>
+                    </DeviceImagePicker>
+                  </View>
 
                   <View style={styles.profileInputsGroup}>
                     <TextInput
@@ -305,11 +308,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                     <TextInput
                       value={bio}
                       onChangeText={setBio}
-                      placeholder="Bio / Tagline (e.g. Cozy Scrapbooker ♡)"
+                      placeholder="Bio / Tagline (e.g. Scrapbook Collector)"
                       placeholderTextColor={colors.ink.faded}
                       style={[styles.textInput, { marginTop: 6 }]}
                     />
                   </View>
+                </View>
+
+                {/* Avatar Presets Bar */}
+                <View style={{ marginTop: 10, marginBottom: 4 }}>
+                  <Text style={{ fontFamily: typography.families.sans, fontSize: 11, fontWeight: '700', color: colors.ink.secondary, marginBottom: 6 }}>
+                    Quick Avatars
+                  </Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                    {AVATAR_PRESETS.map((preset) => {
+                      const isCurrent = (avatarUrl || user?.avatarUrl) === preset.id;
+                      return (
+                        <Pressable
+                          key={preset.id}
+                          onPress={() => {
+                            setAvatarUrl(preset.id);
+                            updateUserProfile(name, email, preset.id, bio);
+                          }}
+                          style={[
+                            styles.presetAvatarPill,
+                            { backgroundColor: preset.bg, borderColor: isCurrent ? colors.brand.purpleDark : preset.border },
+                            isCurrent && { borderWidth: 2 },
+                          ]}
+                        >
+                          <UserAvatar avatarUrl={preset.id} size={28} showBorder={false} />
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
                 </View>
 
                 {/* Switch Account / Profiles */}
@@ -328,10 +359,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                               isActive && styles.accountCardActive,
                             ]}
                           >
-                            <Image
-                              source={{ uri: acc.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200' }}
-                              style={styles.accAvatar}
-                            />
+                            <UserAvatar avatarUrl={acc.avatarUrl} name={acc.name} size={34} />
                             <View style={{ flex: 1 }}>
                               <Text style={[styles.accName, isActive && styles.accNameActive]} numberOfLines={1}>
                                 {acc.name}
@@ -709,16 +737,26 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.brand.purple,
   },
-  cameraBadge: {
+  avatarPickerButton: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: colors.brand.purple,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    bottom: -2,
+    right: -2,
+    backgroundColor: colors.brand.purpleDark,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  presetAvatarPill: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
   profileInputsGroup: {
     flex: 1,

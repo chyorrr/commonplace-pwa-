@@ -13,6 +13,7 @@ interface QuotePinProps {
 export const QuotePin: React.FC<QuotePinProps> = ({ pin, onPress }) => {
   return (
     <PaperCard
+      pinId={pin.id}
       rotation={pin.rotation}
       paperTone="parchment"
       tapeStyle={pin.tapeStyle || 'none'}

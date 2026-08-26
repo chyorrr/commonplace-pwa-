@@ -13,6 +13,7 @@ interface JournalPinProps {
 export const JournalPin: React.FC<JournalPinProps> = ({ pin, onPress }) => {
   return (
     <PaperCard
+      pinId={pin.id}
       rotation={pin.rotation}
       paperTone="linen"
       tapeStyle={pin.tapeStyle || 'none'}

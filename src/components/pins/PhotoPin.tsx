@@ -15,6 +15,7 @@ export const PhotoPin: React.FC<PhotoPinProps> = ({ pin, onPress }) => {
 
   return (
     <PaperCard
+      pinId={pin.id}
       rotation={pin.rotation}
       paperTone="cream"
       tapeStyle={pin.tapeStyle || 'none'}

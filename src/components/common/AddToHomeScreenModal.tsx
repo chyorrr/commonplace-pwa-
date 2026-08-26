@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, Image } from 'react-native';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { 
@@ -10,15 +10,11 @@ import {
   CheckCircle2, 
   Bookmark, 
   Download, 
-  Sparkles, 
-  MoreVertical,
-  Layers,
-  ArrowRight
+  MoreVertical
 } from 'lucide-react-native';
 import { Tape } from './Tape';
 import { 
   isIOS, 
-  isAndroid, 
   hasNativeInstallPrompt, 
   triggerNativeInstallPrompt, 
   markInstallPromptDismissed 
@@ -51,13 +47,12 @@ export const AddToHomeScreenModal: React.FC<AddToHomeScreenModalProps> = ({ visi
     if (hasNativeInstallPrompt()) {
       const { outcome } = await triggerNativeInstallPrompt();
       if (outcome === 'accepted') {
-        setInstallStatus('App installation started! Check your home screen or app drawer.');
+        setInstallStatus('Installation initiated. Check your home screen or app drawer.');
         setTimeout(() => {
           handleDismiss();
         }, 1800);
       }
     } else {
-      // Switch tab to show manual steps if direct prompt not ready
       setInstallStatus('Follow the steps below to add to your Home Screen.');
     }
   };
@@ -83,7 +78,7 @@ export const AddToHomeScreenModal: React.FC<AddToHomeScreenModalProps> = ({ visi
             </View>
             <Text style={styles.modalTitle}>Install Commonplace</Text>
             <Text style={styles.modalSubtitle}>
-              Get full-screen offline scrapbooking, instant notifications, and smooth native gesture navigation.
+              Full-screen scrapbooking, offline database persistence, and local reminder alerts.
             </Text>
           </View>
 
@@ -118,9 +113,9 @@ export const AddToHomeScreenModal: React.FC<AddToHomeScreenModalProps> = ({ visi
                 style={({ pressed }) => [styles.directInstallBtn, pressed && styles.btnPressed]}
               >
                 <Download size={18} color="#FFFFFF" strokeWidth={2.4} />
-                <Text style={styles.directInstallText}>Install Commonplace App</Text>
+                <Text style={styles.directInstallText}>Install Application</Text>
               </Pressable>
-              <Text style={styles.directInstallHint}>1-tap install directly to your device apps</Text>
+              <Text style={styles.directInstallHint}>1-tap installation directly to your device</Text>
             </View>
           )}
 
@@ -233,15 +228,15 @@ export const AddToHomeScreenModal: React.FC<AddToHomeScreenModalProps> = ({ visi
 
           {/* Benefits Note */}
           <View style={styles.benefitsBox}>
-            <Sparkles size={14} color={colors.brand.purple} />
+            <Bookmark size={14} color={colors.brand.purpleDark} />
             <Text style={styles.benefitsText}>
-              Opens fullscreen without browser searchbars, stores your notes & photos offline, and enables chime reminders.
+              Removes browser address bars, caches assets for instant offline access, and activates reminders.
             </Text>
           </View>
 
-          {/* Got it Button */}
+          {/* Done Button */}
           <Pressable onPress={handleDismiss} style={({ pressed }) => [styles.gotItBtn, pressed && styles.btnPressed]}>
-            <Text style={styles.gotItBtnText}>Got it ♡</Text>
+            <Text style={styles.gotItBtnText}>Close</Text>
           </Pressable>
         </Pressable>
       </Pressable>
@@ -262,19 +257,19 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
+    borderRadius: 24,
     paddingHorizontal: 22,
     paddingTop: 24,
     paddingBottom: 22,
     alignItems: 'center',
     position: 'relative',
-    shadowColor: '#2D1B4E',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.22,
-    shadowRadius: 24,
+    shadowColor: '#1E1B24',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
     elevation: 16,
     borderWidth: 1,
-    borderColor: 'rgba(138, 99, 210, 0.12)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
   },
   tapeAnchor: {
     position: 'absolute',
@@ -305,13 +300,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     marginBottom: 10,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
+    borderColor: 'rgba(0,0,0,0.08)',
   },
   appIconImg: {
     width: '100%',
@@ -336,7 +326,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#F3E8FF',
     padding: 3,
-    borderRadius: 14,
+    borderRadius: 12,
     width: '100%',
     marginBottom: 14,
   },
@@ -347,15 +337,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 8,
-    borderRadius: 11,
+    borderRadius: 10,
   },
   tabBtnActive: {
-    backgroundColor: colors.brand.purple,
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: colors.brand.purpleDark,
   },
   tabBtnText: {
     fontFamily: typography.families.sans,
@@ -374,22 +359,17 @@ const styles = StyleSheet.create({
   },
   directInstallBtn: {
     width: '100%',
-    height: 46,
-    borderRadius: 16,
-    backgroundColor: '#16A34A',
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#15803D',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 8,
-    elevation: 4,
   },
   directInstallText: {
     fontFamily: typography.families.sans,
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -406,7 +386,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#DCFCE7',
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: 10,
     marginBottom: 10,
     width: '100%',
   },
@@ -420,11 +400,11 @@ const styles = StyleSheet.create({
   stepsContainer: {
     width: '100%',
     backgroundColor: '#FAF7FD',
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 14,
     gap: 12,
     borderWidth: 1,
-    borderColor: 'rgba(138, 99, 210, 0.1)',
+    borderColor: 'rgba(0, 0, 0, 0.06)',
   },
   stepRow: {
     flexDirection: 'row',
@@ -435,7 +415,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.brand.purple,
+    backgroundColor: colors.brand.purpleDark,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -485,16 +465,11 @@ const styles = StyleSheet.create({
   },
   gotItBtn: {
     width: '100%',
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.brand.purple,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: colors.ink.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
   },
   btnPressed: {
     opacity: 0.85,
@@ -502,7 +477,7 @@ const styles = StyleSheet.create({
   },
   gotItBtnText: {
     fontFamily: typography.families.sans,
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
     color: '#FFFFFF',
   },

@@ -13,6 +13,7 @@ interface ThoughtPinProps {
 export const ThoughtPin: React.FC<ThoughtPinProps> = ({ pin, onPress }) => {
   return (
     <PaperCard
+      pinId={pin.id}
       rotation={pin.rotation}
       paperTone="peach"
       tapeStyle="none"

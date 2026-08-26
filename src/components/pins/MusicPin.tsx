@@ -22,6 +22,7 @@ export const MusicPin: React.FC<MusicPinProps> = ({ pin, onPress }) => {
 
   return (
     <PaperCard
+      pinId={pin.id}
       rotation={pin.rotation}
       paperTone="sky"
       tapeStyle={pin.tapeStyle || 'none'}

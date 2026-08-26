@@ -92,6 +92,7 @@ export const VoiceNotePin: React.FC<VoiceNotePinProps> = ({ pin, onPress }) => {
 
   return (
     <PaperCard
+      pinId={pin.id}
       rotation={pin.rotation}
       paperTone="lilac"
       tapeStyle={pin.tapeStyle || 'none'}

@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated, Platform } from 'react-native';
-import { Download, Share, Smartphone, X, Sparkles } from 'lucide-react-native';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import { Download, Smartphone, X, Layers } from 'lucide-react-native';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { 
   isStandalone, 
   isIOS, 
-  isAndroid, 
   shouldShowInstallPrompt, 
   markInstallPromptDismissed, 
-  hasNativeInstallPrompt, 
   triggerNativeInstallPrompt,
   subscribeInstallPrompt
 } from '../../utils/pwaUtils';
@@ -86,34 +84,31 @@ export const PWAInstallBanner: React.FC = () => {
         {/* App Icon Capsule */}
         <View style={styles.iconCircle}>
           {isApple ? (
-            <Smartphone size={16} color="#FFFFFF" strokeWidth={2.4} />
+            <Smartphone size={16} color="#FFFFFF" strokeWidth={2.2} />
           ) : (
-            <Download size={16} color="#FFFFFF" strokeWidth={2.4} />
+            <Download size={16} color="#FFFFFF" strokeWidth={2.2} />
           )}
         </View>
 
         {/* Text Details */}
         <View style={styles.textCol}>
-          <View style={styles.titleRow}>
-            <Text style={styles.bannerTitle}>
-              {isApple ? 'Add to Home Screen' : 'Install Commonplace'}
-            </Text>
-            <Sparkles size={11} color={colors.accents.sakura} />
-          </View>
+          <Text style={styles.bannerTitle}>
+            {isApple ? 'Add to Home Screen' : 'Install Commonplace'}
+          </Text>
           <Text style={styles.bannerSubtitle} numberOfLines={1}>
             {isApple
-              ? 'Tap to open 3-step guide for full screen'
-              : '1-tap install for full-screen offline use'}
+              ? 'Fullscreen mode & offline access'
+              : '1-tap install for offline scrapbook access'}
           </Text>
         </View>
 
         {/* Action Button */}
         <Pressable
           onPress={handleAction}
-          style={({ pressed }) => [styles.actionPill, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [styles.actionPill, pressed && { opacity: 0.85 }]}
         >
           <Text style={styles.actionPillText}>
-            {canDirectInstall ? 'Install' : 'Get App'}
+            {canDirectInstall ? 'Install' : 'View'}
           </Text>
         </Pressable>
 
@@ -142,40 +137,30 @@ const styles = StyleSheet.create({
   },
   bannerCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 14,
     gap: 10,
-    shadowColor: '#2D1B4E',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
+    shadowColor: '#1E1B24',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
     shadowRadius: 16,
-    elevation: 12,
+    elevation: 10,
     borderWidth: 1,
-    borderColor: 'rgba(138, 99, 210, 0.16)',
+    borderColor: 'rgba(0, 0, 0, 0.07)',
   },
   iconCircle: {
     width: 34,
     height: 34,
-    borderRadius: 12,
-    backgroundColor: colors.brand.purple,
+    borderRadius: 10,
+    backgroundColor: colors.brand.purpleDark,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
   },
   textCol: {
     flex: 1,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
   },
   bannerTitle: {
     fontFamily: typography.families.sans,
@@ -190,10 +175,10 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   actionPill: {
-    backgroundColor: colors.brand.purple,
+    backgroundColor: colors.brand.purpleDark,
     paddingVertical: 6,
     paddingHorizontal: 13,
-    borderRadius: 14,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },

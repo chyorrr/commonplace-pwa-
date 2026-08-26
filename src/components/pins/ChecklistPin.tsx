@@ -16,6 +16,7 @@ export const ChecklistPin: React.FC<ChecklistPinProps> = ({ pin, onPress }) => {
 
   return (
     <PaperCard
+      pinId={pin.id}
       rotation={pin.rotation}
       paperTone={pin.paperTone === 'butter' ? 'butter' : pin.paperTone === 'lilac' ? 'lilac' : 'cream'}
       tapeStyle={pin.tapeStyle || 'none'}
