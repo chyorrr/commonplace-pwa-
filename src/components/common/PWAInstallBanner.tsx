@@ -6,34 +6,32 @@ import { typography } from '../../theme/typography';
 import { 
   isStandalone, 
   isIOS, 
-  shouldShowInstallPrompt, 
-  markInstallPromptDismissed, 
   triggerNativeInstallPrompt,
   subscribeInstallPrompt
 } from '../../utils/pwaUtils';
 import { useApp } from '../../context/AppContext';
 
 export const PWAInstallBanner: React.FC = () => {
-  const { openInstallModal } = useApp();
+  const { openInstallModal, isAuthenticated } = useApp();
   const [visible, setVisible] = useState(false);
   const [canDirectInstall, setCanDirectInstall] = useState(false);
   const [slideAnim] = useState(new Animated.Value(60));
 
   useEffect(() => {
-    // Check if already installed
+    // If running as standalone PWA app, never show install banner
     if (isStandalone()) {
       setVisible(false);
       return;
     }
 
-    // Subscribe to browser install prompt availability
     const unsubscribe = subscribeInstallPrompt((canInstall) => {
       setCanDirectInstall(canInstall);
     });
 
-    // Check after a pleasant 2.5s delay on initial page load
+    // Auto-prompt on initial visit (before sign in) and also right after sign in
+    const delayMs = isAuthenticated ? 2800 : 1800;
     const timer = setTimeout(() => {
-      if (!isStandalone() && shouldShowInstallPrompt()) {
+      if (!isStandalone()) {
         setVisible(true);
         Animated.spring(slideAnim, {
           toValue: 0,
@@ -42,19 +40,18 @@ export const PWAInstallBanner: React.FC = () => {
           useNativeDriver: true,
         }).start();
       }
-    }, 2500);
+    }, delayMs);
 
     return () => {
       clearTimeout(timer);
       unsubscribe();
     };
-  }, []);
+  }, [isAuthenticated]);
 
   if (!visible) return null;
 
   const handleDismiss = (e?: any) => {
     e?.stopPropagation?.();
-    markInstallPromptDismissed();
     Animated.timing(slideAnim, {
       toValue: 80,
       duration: 200,
@@ -93,32 +90,25 @@ export const PWAInstallBanner: React.FC = () => {
         {/* Text Details */}
         <View style={styles.textCol}>
           <Text style={styles.bannerTitle}>
-            {isApple ? 'Add to Home Screen' : 'Install Commonplace'}
+            {isApple ? 'Add to Home Screen' : 'Install Commonplace App'}
           </Text>
           <Text style={styles.bannerSubtitle} numberOfLines={1}>
             {isApple
-              ? 'Fullscreen mode & offline access'
+              ? 'Fullscreen app & offline journals'
               : '1-tap install for offline scrapbook access'}
           </Text>
         </View>
 
         {/* Action Button */}
-        <Pressable
-          onPress={handleAction}
-          style={({ pressed }) => [styles.actionPill, pressed && { opacity: 0.85 }]}
-        >
-          <Text style={styles.actionPillText}>
-            {canDirectInstall ? 'Install' : 'View'}
+        <View style={styles.actionBtn}>
+          <Text style={styles.actionBtnText}>
+            {isApple ? 'Guide' : 'Install'}
           </Text>
-        </Pressable>
+        </View>
 
         {/* Close Button */}
-        <Pressable
-          onPress={handleDismiss}
-          style={styles.closeBtn}
-          hitSlop={8}
-        >
-          <X size={14} color={colors.ink.secondary} />
+        <Pressable onPress={handleDismiss} style={styles.closeBtn} hitSlop={10}>
+          <X size={14} color={colors.ink.tertiary} />
         </Pressable>
       </Pressable>
     </Animated.View>
@@ -128,7 +118,7 @@ export const PWAInstallBanner: React.FC = () => {
 const styles = StyleSheet.create({
   bannerContainer: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 20,
     left: 16,
     right: 16,
     maxWidth: 440,
@@ -138,23 +128,23 @@ const styles = StyleSheet.create({
   bannerCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
     gap: 10,
-    shadowColor: '#1E1B24',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.14,
-    shadowRadius: 16,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.07)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(124, 58, 237, 0.22)',
+    shadowColor: '#2D1B4E',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 8,
   },
   iconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.brand.purpleDark,
     alignItems: 'center',
     justifyContent: 'center',
@@ -174,27 +164,20 @@ const styles = StyleSheet.create({
     color: colors.ink.secondary,
     marginTop: 1,
   },
-  actionPill: {
-    backgroundColor: colors.brand.purpleDark,
+  actionBtn: {
+    backgroundColor: '#F3E8FF',
     paddingVertical: 6,
-    paddingHorizontal: 13,
+    paddingHorizontal: 10,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  actionPillText: {
+  actionBtnText: {
     fontFamily: typography.families.sans,
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.brand.purpleDark,
   },
   closeBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.04)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 2,
+    padding: 6,
+    marginLeft: -2,
   },
 });

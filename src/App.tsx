@@ -122,17 +122,15 @@ const MainNavigator: React.FC = () => {
       <StickerStudioModal />
       <PrivacyLockModal />
 
-      {/* Interactive Guide, Settings & iOS/Android Add To Home Screen Helper */}
+      {/* Interactive Guide & Settings */}
       <GuideModal visible={isGuideOpen} onClose={closeGuide} />
       <SettingsModal visible={isSettingsOpen} onClose={closeSettings} />
-      <AddToHomeScreenModal visible={isInstallModalOpen} onClose={closeInstallModal} />
-      <PWAInstallBanner />
     </View>
   );
 };
 
 const RootNavigator: React.FC = () => {
-  const { isAuthenticated, themeMode } = useApp();
+  const { isAuthenticated, themeMode, isInstallModalOpen, closeInstallModal } = useApp();
 
   const themeAtmospheres: Record<ThemeMode, { bg: string; orb1: string; orb2: string; orb3: string; orb4: string; isDark?: boolean }> = {
     sakura: {
@@ -198,18 +196,6 @@ const RootNavigator: React.FC = () => {
     }
   }, [currentTheme]);
 
-  if (!isAuthenticated) {
-    return (
-      <View style={[styles.rootContainer, { backgroundColor: currentTheme.bg }]}>
-        <View style={[styles.ambientOrb, styles.orb1, { backgroundColor: currentTheme.orb1 }, currentTheme.isDark && { opacity: 0.18 }]} pointerEvents="none" />
-        <View style={[styles.ambientOrb, styles.orb2, { backgroundColor: currentTheme.orb2 }, currentTheme.isDark && { opacity: 0.18 }]} pointerEvents="none" />
-        <View style={[styles.ambientOrb, styles.orb3, { backgroundColor: currentTheme.orb3 }, currentTheme.isDark && { opacity: 0.18 }]} pointerEvents="none" />
-        <View style={[styles.ambientOrb, styles.orb4, { backgroundColor: currentTheme.orb4 }, currentTheme.isDark && { opacity: 0.18 }]} pointerEvents="none" />
-        <AuthScreen />
-      </View>
-    );
-  }
-
   return (
     <View style={[styles.rootContainer, { backgroundColor: currentTheme.bg }]}>
       {/* Dreamy Ambient Watercolor Blooms */}
@@ -219,9 +205,18 @@ const RootNavigator: React.FC = () => {
       <View style={[styles.ambientOrb, styles.orb4, { backgroundColor: currentTheme.orb4 }, currentTheme.isDark && { opacity: 0.18 }]} pointerEvents="none" />
 
       <StatusBar barStyle={currentTheme.isDark ? 'light-content' : 'dark-content'} backgroundColor={currentTheme.bg} />
-      <SafeAreaView style={styles.safeArea}>
-        <MainNavigator />
-      </SafeAreaView>
+
+      {isAuthenticated ? (
+        <SafeAreaView style={styles.safeArea}>
+          <MainNavigator />
+        </SafeAreaView>
+      ) : (
+        <AuthScreen />
+      )}
+
+      {/* Global PWA Install Helpers (Active both before and after sign in) */}
+      <AddToHomeScreenModal visible={isInstallModalOpen} onClose={closeInstallModal} />
+      <PWAInstallBanner />
     </View>
   );
 };

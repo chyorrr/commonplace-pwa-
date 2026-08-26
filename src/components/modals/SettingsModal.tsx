@@ -619,7 +619,64 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
               </Pressable>
             </View>
 
-            {/* 7. Reset to Clean Slate */}
+            {/* 7. About Crete Corporation Limited & Commonplace */}
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionTitle}>About & Legal</Text>
+
+              <View style={styles.corporateCard}>
+                <Tape variant="diagonal-left" width={38} height={12} color="rgba(124, 58, 237, 0.45)" />
+
+                {/* Corporation Brand Bar */}
+                <View style={styles.corpHeaderRow}>
+                  <View style={styles.corpLogoBadge}>
+                    <Text style={styles.corpLogoText}>CCL</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.corpName}>Crete Corporation Limited</Text>
+                    <Text style={styles.corpTagline}>can't trade creativity for approval</Text>
+                  </View>
+                </View>
+
+                {/* Founder Showcase: Harsh Naik */}
+                <View style={styles.founderCard}>
+                  <View style={styles.founderAvatarWrap}>
+                    <Image
+                      source={{ uri: '/founder.png' }}
+                      style={styles.founderPhoto}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.founderVerifiedBadge}>
+                      <Check size={8} color="#FFFFFF" strokeWidth={3.5} />
+                    </View>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.founderTitleRow}>
+                      <Text style={styles.founderName}>Harsh Naik</Text>
+                      <View style={styles.founderRolePill}>
+                        <Text style={styles.founderRolePillText}>CEO</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.founderSubRole}>CEO & Creative Director</Text>
+                    <Text style={styles.founderBio}>
+                      CEO and Creative Director of Crete Corporation Limited. Conceived, designed, and built every facet of Commonplace from the ground up.
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Meta & Copyright Footer */}
+                <View style={styles.corpFooter}>
+                  <Text style={styles.versionBadge}>Commonplace v2.4.0 • Release Build</Text>
+                  <Text style={styles.copyrightText}>
+                    © 2026 Crete Corporation Limited. All rights reserved.
+                  </Text>
+                  <Text style={styles.legalNotice}>
+                    Commonplace is designed & engineered by Harsh Naik under Crete Corporation Limited. All data resides securely on your local device.
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* 8. Reset to Clean Slate */}
             <View style={styles.sectionBlock}>
               <Text style={styles.sectionTitle}>Reset All Data</Text>
               <Pressable
@@ -1110,5 +1167,173 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#FFF',
+  },
+  corporateCard: {
+    backgroundColor: '#FAF8FD',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 58, 237, 0.14)',
+    position: 'relative',
+    gap: 12,
+  },
+  corpHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+  },
+  corpLogoBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#2D1B4E',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  corpLogoText: {
+    fontFamily: typography.families.serif,
+    fontSize: 14,
+    fontWeight: '700',
+    fontStyle: 'italic',
+    color: '#F5EEFF',
+    letterSpacing: 1.5,
+  },
+  corpName: {
+    fontFamily: typography.families.heading,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2D1B4E',
+  },
+  corpTagline: {
+    fontFamily: typography.families.serif,
+    fontSize: 11.5,
+    fontStyle: 'italic',
+    color: colors.ink.secondary,
+    marginTop: 1,
+  },
+  founderCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  founderAvatarWrap: {
+    position: 'relative',
+  },
+  founderPhoto: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: '#EDE8FA',
+    borderWidth: 1.5,
+    borderColor: '#DDD6FE',
+    overflow: 'hidden',
+  },
+  founderInitials: {
+    fontFamily: typography.families.heading,
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.brand.purpleDark,
+  },
+  founderVerifiedBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#16A34A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  founderTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  founderName: {
+    fontFamily: typography.families.sans,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.ink.primary,
+  },
+  founderRolePill: {
+    backgroundColor: '#F3E8FF',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+  },
+  founderRolePillText: {
+    fontFamily: typography.families.sans,
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.brand.purpleDark,
+    textTransform: 'uppercase',
+  },
+  founderSubRole: {
+    fontFamily: typography.families.sans,
+    fontSize: 10.5,
+    color: colors.ink.secondary,
+    marginTop: 1,
+  },
+  founderBio: {
+    fontFamily: typography.families.sans,
+    fontSize: 10.5,
+    color: colors.ink.tertiary,
+    marginTop: 4,
+    lineHeight: 14,
+  },
+  appHighlightsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  highlightPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  highlightText: {
+    fontFamily: typography.families.sans,
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.ink.secondary,
+  },
+  corpFooter: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+    paddingTop: 10,
+    gap: 3,
+  },
+  versionBadge: {
+    fontFamily: typography.families.sans,
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: colors.brand.purpleDark,
+  },
+  copyrightText: {
+    fontFamily: typography.families.sans,
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.ink.secondary,
+  },
+  legalNotice: {
+    fontFamily: typography.families.sans,
+    fontSize: 9.5,
+    color: colors.ink.tertiary,
+    lineHeight: 13,
   },
 });

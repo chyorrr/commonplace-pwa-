@@ -4,7 +4,7 @@ import { useApp, UserProfile, ThemeMode } from '../context/AppContext';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Tape } from '../components/common/Tape';
-import { ArrowRight, Lock, Mail, User, Check, Camera, ChevronLeft } from 'lucide-react-native';
+import { ArrowRight, Lock, Mail, User, Check, Camera, ChevronLeft, Smartphone } from 'lucide-react-native';
 import { DeviceImagePicker } from '../components/common/DeviceImagePicker';
 import { UserAvatar } from '../components/common/UserAvatar';
 import { AVATAR_PRESETS } from '../data/avatarPresets';
@@ -30,7 +30,7 @@ const THEME_OPTIONS: ThemeOption[] = [
 ];
 
 export const AuthScreen: React.FC = () => {
-  const { login, savedAccounts, setThemeMode, themeMode } = useApp();
+  const { login, savedAccounts, setThemeMode, themeMode, openInstallModal } = useApp();
 
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [authStep, setAuthStep] = useState<'form' | 'theme'>('form');
@@ -381,6 +381,24 @@ export const AuthScreen: React.FC = () => {
             </Pressable>
           </View>
         )}
+      </View>
+
+      {/* Subtle PWA Install Prompt Trigger Link on Auth Screen */}
+      <Pressable
+        onPress={openInstallModal}
+        style={({ pressed }) => [styles.installAppLink, pressed && styles.btnPressed]}
+        hitSlop={8}
+      >
+        <Smartphone size={13} color={colors.ink.tertiary} />
+        <Text style={styles.installAppLinkText}>Install Commonplace App for Offline Access</Text>
+      </Pressable>
+
+      {/* Crete Corporation Limited & Founder Representation */}
+      <View style={styles.authCorporateFooter}>
+        <Text style={styles.authCorpName}>Crete Corporation Limited</Text>
+        <Text style={styles.authCorpMeta}>
+          Crafted by <Text style={styles.authCorpFounder}>Harsh Naik</Text> • © 2026 All Rights Reserved
+        </Text>
       </View>
     </ScrollView>
   );
@@ -763,5 +781,46 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.ink.secondary,
     marginLeft: 20,
+  },
+  installAppLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  installAppLinkText: {
+    fontFamily: typography.families.sans,
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.ink.secondary,
+  },
+  authCorporateFooter: {
+    marginTop: 20,
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  authCorpName: {
+    fontFamily: typography.families.sans,
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#2D1B4E',
+    letterSpacing: 0.4,
+  },
+  authCorpMeta: {
+    fontFamily: typography.families.sans,
+    fontSize: 10.5,
+    color: colors.ink.tertiary,
+    marginTop: 2,
+  },
+  authCorpFounder: {
+    fontWeight: '700',
+    color: colors.brand.purpleDark,
   },
 });
