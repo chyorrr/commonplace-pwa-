@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Tape } from '../components/common/Tape';
-import { ChevronLeft, MoreHorizontal, Plus, Share2, Download } from 'lucide-react-native';
+import { ChevronLeft, MoreHorizontal, Plus, Share2, Download, Trash2, Eye, EyeOff, ShieldAlert } from 'lucide-react-native';
 import { ShareModal } from '../components/modals/ShareModal';
 import { BoardExportModal } from '../components/modals/BoardExportModal';
 import { PinCard } from '../components/pins/PinCard';
@@ -15,34 +15,84 @@ export const BoardDetailScreen: React.FC = () => {
     activeBoard,
     setActiveBoardId,
     openCreateSheet,
+    deleteBoard,
+    toggleHideBoard,
+    showHiddenItems,
+    toggleShowHiddenItems,
   } = useApp();
 
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   if (!activeBoard) return null;
 
   const boardBg = activeBoard.colorHex || '#FFF5ED';
-  const pins = activeBoard.pins || [];
+  const rawPins = activeBoard.pins || [];
+  const pins = showHiddenItems ? rawPins : rawPins.filter((p) => !p.isHidden);
+  const hiddenCount = rawPins.filter((p) => p.isHidden).length;
+
+  const handleDeleteBoard = () => {
+    deleteBoard(activeBoard.id);
+    setShowDeleteConfirm(false);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: boardBg }]}>
       {/* 1. Top Header */}
       <View style={styles.headerRow}>
-        <Pressable onPress={() => setActiveBoardId(null)} style={styles.backBtn} hitSlop={10}>
-          <ChevronLeft size={24} color={colors.ink.primary} />
-        </Pressable>
+        {/* Left Side: Back & Delete Board */}
+        <View style={styles.headerLeftGroup}>
+          <Pressable onPress={() => setActiveBoardId(null)} style={styles.backBtn} hitSlop={10}>
+            <ChevronLeft size={24} color={colors.ink.primary} />
+          </Pressable>
 
+          <Pressable
+            onPress={() => setShowDeleteConfirm(true)}
+            style={({ pressed }) => [styles.headerIconBtn, pressed && styles.btnPressed]}
+            hitSlop={8}
+            accessibilityLabel="Delete board"
+          >
+            <Trash2 size={18} color={colors.accents.terracotta} strokeWidth={2} />
+          </Pressable>
+        </View>
+
+        {/* Center: Title & Count */}
         <View style={styles.headerTitleGroup}>
-          <Text style={styles.boardTitle}>{activeBoard.title}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.boardTitle} numberOfLines={1}>{activeBoard.title}</Text>
+            {activeBoard.isHidden && (
+              <View style={styles.hiddenPill}>
+                <EyeOff size={10} color="#7C3AED" />
+                <Text style={styles.hiddenPillText}>Hidden</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.boardSubtitle}>
             {pins.length === 1 ? '1 item' : `${pins.length} items`}
+            {hiddenCount > 0 && !showHiddenItems ? ` (${hiddenCount} hidden)` : ''}
           </Text>
         </View>
 
-        <Pressable onPress={() => setIsExportOpen(true)} style={styles.menuBtn} hitSlop={10}>
-          <MoreHorizontal size={22} color={colors.ink.primary} />
-        </Pressable>
+        {/* Right Side: Hide Board & Export/More */}
+        <View style={styles.headerRightGroup}>
+          <Pressable
+            onPress={() => toggleHideBoard(activeBoard.id)}
+            style={({ pressed }) => [styles.headerIconBtn, pressed && styles.btnPressed]}
+            hitSlop={8}
+            accessibilityLabel={activeBoard.isHidden ? 'Unhide board' : 'Hide board'}
+          >
+            {activeBoard.isHidden ? (
+              <Eye size={19} color="#7C3AED" strokeWidth={2} />
+            ) : (
+              <EyeOff size={18} color={colors.ink.secondary} strokeWidth={1.8} />
+            )}
+          </Pressable>
+
+          <Pressable onPress={() => setIsExportOpen(true)} style={styles.menuBtn} hitSlop={8}>
+            <MoreHorizontal size={22} color={colors.ink.primary} />
+          </Pressable>
+        </View>
       </View>
 
       {/* 2. Scrapbook Pins Canvas */}
@@ -52,6 +102,22 @@ export const BoardDetailScreen: React.FC = () => {
         contentContainerStyle={styles.canvasContent}
       >
         <View id="board-canvas-container" style={[styles.canvasWrapper, { backgroundColor: boardBg }]}>
+          {/* Hidden Items Notice Banner */}
+          {hiddenCount > 0 && (
+            <Pressable
+              onPress={toggleShowHiddenItems}
+              style={({ pressed }) => [styles.hiddenNoticeBanner, pressed && styles.btnPressed]}
+              hitSlop={6}
+            >
+              <EyeOff size={13} color="#7C3AED" />
+              <Text style={styles.hiddenNoticeText}>
+                {showHiddenItems
+                  ? `Showing all items (${hiddenCount} hidden unmasked)`
+                  : `${hiddenCount} hidden note${hiddenCount > 1 ? 's' : ''} in this board • Tap to reveal`}
+              </Text>
+            </Pressable>
+          )}
+
           {pins.length === 0 ? (
             /* Clean Empty Board State */
             <View style={styles.emptyContainer}>
@@ -137,6 +203,41 @@ export const BoardDetailScreen: React.FC = () => {
         board={activeBoard}
         onClose={() => setIsExportOpen(false)}
       />
+
+      {/* Delete Board Confirmation Modal */}
+      <Modal
+        visible={showDeleteConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteConfirm(false)}
+      >
+        <Pressable style={styles.deleteModalOverlay} onPress={() => setShowDeleteConfirm(false)}>
+          <Pressable style={styles.deleteModalCard} onPress={(e) => e.stopPropagation()}>
+            <Tape variant="top-center" width={44} height={12} color="rgba(225, 29, 72, 0.6)" />
+            <View style={styles.deleteModalIcon}>
+              <Trash2 size={24} color="#E11D48" />
+            </View>
+            <Text style={styles.deleteModalTitle}>Delete this board?</Text>
+            <Text style={styles.deleteModalSub}>
+              "{activeBoard.title}" and all its {rawPins.length} item{rawPins.length === 1 ? '' : 's'} will be permanently removed.
+            </Text>
+            <View style={styles.deleteModalActions}>
+              <Pressable
+                onPress={() => setShowDeleteConfirm(false)}
+                style={styles.deleteCancelBtn}
+              >
+                <Text style={styles.deleteCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleDeleteBoard}
+                style={styles.deleteConfirmBtn}
+              >
+                <Text style={styles.deleteConfirmText}>Delete Board</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -156,6 +257,134 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.04)',
     backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  headerLeftGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  headerRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  headerIconBtn: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  hiddenPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#EDE8FF',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+  },
+  hiddenPillText: {
+    fontFamily: typography.families.sans,
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#6D28D9',
+  },
+  hiddenNoticeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#F3E8FF',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 58, 237, 0.15)',
+  },
+  hiddenNoticeText: {
+    fontFamily: typography.families.sans,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6D28D9',
+  },
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(20, 15, 30, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  deleteModalCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 20,
+    alignItems: 'center',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+  },
+  deleteModalIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFE4E6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    marginBottom: 12,
+  },
+  deleteModalTitle: {
+    fontFamily: typography.families.heading,
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.ink.primary,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  deleteModalSub: {
+    fontFamily: typography.families.sans,
+    fontSize: 12,
+    color: colors.ink.secondary,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginBottom: 18,
+  },
+  deleteModalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  deleteCancelBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    alignItems: 'center',
+  },
+  deleteCancelText: {
+    fontFamily: typography.families.sans,
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.ink.primary,
+  },
+  deleteConfirmBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#E11D48',
+    alignItems: 'center',
+  },
+  deleteConfirmText: {
+    fontFamily: typography.families.sans,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   backBtn: {
     padding: 6,

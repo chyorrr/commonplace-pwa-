@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { shadows } from '../../theme/shadows';
-import { X, Heart, Trash2, FolderInput, Stamp, MapPin, Calendar, Clock, ExternalLink, MessageCircle, Instagram, Share2, Music } from 'lucide-react-native';
+import { X, Heart, Trash2, FolderInput, Stamp, MapPin, Calendar, Clock, ExternalLink, MessageCircle, Instagram, Share2, Music, Eye, EyeOff } from 'lucide-react-native';
 import { Tape } from '../common/Tape';
 import { shareService } from '../../services/shareService';
 import { spotifyService } from '../../services/spotifyService';
@@ -15,6 +15,7 @@ export const PinDetailModal: React.FC = () => {
     activePinDetail,
     setActivePinDetail,
     toggleFavoritePin,
+    toggleHidePin,
     deletePin,
     boards,
     addPin,
@@ -32,9 +33,9 @@ export const PinDetailModal: React.FC = () => {
 
   const handleMoveToBoard = (targetBoardId: string) => {
     if (!pin) return;
-    const { id, createdAt, ...pinRest } = pin;
-    addPin(targetBoardId, pinRest);
     deletePin(pin.id);
+    const { id, createdAt, boardId, ...rest } = pin;
+    addPin(targetBoardId, rest);
     handleClose();
   };
 
@@ -79,6 +80,24 @@ export const PinDetailModal: React.FC = () => {
                   fill={pin.isFavorite ? colors.accents.terracotta : 'transparent'}
                   strokeWidth={1.8}
                 />
+              </Pressable>
+
+              {/* Hide / Unhide Note Toggle */}
+              <Pressable
+                onPress={() => toggleHidePin(pin.id)}
+                style={({ pressed }) => [
+                  styles.actionBtn,
+                  pin.isHidden && { backgroundColor: '#F3E8FF' },
+                  pressed && { opacity: 0.7 },
+                ]}
+                hitSlop={6}
+                accessibilityLabel={pin.isHidden ? 'Unhide note' : 'Hide note'}
+              >
+                {pin.isHidden ? (
+                  <Eye size={17} color="#7C3AED" />
+                ) : (
+                  <EyeOff size={17} color={colors.ink.secondary} />
+                )}
               </Pressable>
 
               {/* Move to another board */}

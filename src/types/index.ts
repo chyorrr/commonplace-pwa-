@@ -45,6 +45,7 @@ export interface BasePin {
   title?: string;
   createdAt: string;
   isFavorite?: boolean;
+  isHidden?: boolean;
   tags?: string[];
   boardId?: string;
   rotation?: number; // subtle natural micro-rotation (-2 to +2 deg)
@@ -184,6 +185,7 @@ export interface Board {
   description?: string;
   atmosphere: AtmosphereType;
   isLocked?: boolean;
+  isHidden?: boolean;
   passcode?: string;
   createdAt: string;
   updatedAt?: string;

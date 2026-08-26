@@ -393,9 +393,9 @@ export const AuthScreen: React.FC = () => {
         <Text style={styles.installAppLinkText}>Install Commonplace App for Offline Access</Text>
       </Pressable>
 
-      {/* Crete Corporation Limited & Founder Representation */}
+      {/* Crete & Founder Representation */}
       <View style={styles.authCorporateFooter}>
-        <Text style={styles.authCorpName}>Crete Corporation Limited</Text>
+        <Text style={styles.authCorpName}>Crete</Text>
         <Text style={styles.authCorpMeta}>
           Crafted by <Text style={styles.authCorpFounder}>Harsh Naik</Text> • © 2026 All Rights Reserved
         </Text>

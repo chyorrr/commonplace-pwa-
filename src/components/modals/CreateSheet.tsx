@@ -36,8 +36,13 @@ export const CreateSheet: React.FC = () => {
   useEffect(() => {
     if (isCreateSheetOpen) {
       setSelectedType(initialCreateType || null);
+      if (activeBoardId) {
+        setSelectedBoardId(activeBoardId);
+      } else if (boards.length > 0) {
+        setSelectedBoardId(boards[0].id);
+      }
     }
-  }, [isCreateSheetOpen, initialCreateType]);
+  }, [isCreateSheetOpen, initialCreateType, activeBoardId, boards]);
 
   // Form states
   const [title, setTitle] = useState('');

@@ -619,9 +619,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
               </Pressable>
             </View>
 
-            {/* 7. About Crete Corporation Limited & Commonplace */}
+            {/* 7. About Crete & Commonplace */}
             <View style={styles.sectionBlock}>
-              <Text style={styles.sectionTitle}>About & Legal</Text>
+              <Text style={styles.sectionTitle}>About & Studio</Text>
 
               <View style={styles.corporateCard}>
                 <Tape variant="diagonal-left" width={38} height={12} color="rgba(124, 58, 237, 0.45)" />
@@ -629,10 +629,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                 {/* Corporation Brand Bar */}
                 <View style={styles.corpHeaderRow}>
                   <View style={styles.corpLogoBadge}>
-                    <Text style={styles.corpLogoText}>CCL</Text>
+                    <Image
+                      source={{ uri: '/crete-logo.png' }}
+                      style={styles.corpLogoImage}
+                      resizeMode="contain"
+                    />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.corpName}>Crete Corporation Limited</Text>
+                    <Text style={styles.corpName}>Crete</Text>
                     <Text style={styles.corpTagline}>can't trade creativity for approval</Text>
                   </View>
                 </View>
@@ -658,7 +662,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                     </View>
                     <Text style={styles.founderSubRole}>CEO & Creative Director</Text>
                     <Text style={styles.founderBio}>
-                      CEO and Creative Director of Crete Corporation Limited. Conceived, designed, and built every facet of Commonplace from the ground up.
+                      CEO and Creative Director of Crete. Conceived, designed, and built every facet of Commonplace from the ground up.
                     </Text>
                   </View>
                 </View>
@@ -667,10 +671,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                 <View style={styles.corpFooter}>
                   <Text style={styles.versionBadge}>Commonplace v2.4.0 • Release Build</Text>
                   <Text style={styles.copyrightText}>
-                    © 2026 Crete Corporation Limited. All rights reserved.
+                    © 2026 Crete. All rights reserved.
                   </Text>
                   <Text style={styles.legalNotice}>
-                    Commonplace is designed & engineered by Harsh Naik under Crete Corporation Limited. All data resides securely on your local device.
+                    Commonplace is designed & engineered by Harsh Naik under Crete. All data resides securely on your local device.
                   </Text>
                 </View>
               </View>
@@ -1184,25 +1188,25 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   corpLogoBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#2D1B4E',
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FAF8FD',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    overflow: 'hidden',
+    padding: 3,
   },
-  corpLogoText: {
-    fontFamily: typography.families.serif,
-    fontSize: 14,
-    fontWeight: '700',
-    fontStyle: 'italic',
-    color: '#F5EEFF',
-    letterSpacing: 1.5,
+  corpLogoImage: {
+    width: '100%',
+    height: '100%',
   },
   corpName: {
     fontFamily: typography.families.heading,
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
     color: '#2D1B4E',
   },
   corpTagline: {

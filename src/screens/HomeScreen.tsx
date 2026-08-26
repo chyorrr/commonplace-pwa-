@@ -5,7 +5,7 @@ import { PastelBoardCard } from '../components/board/PastelBoardCard';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Tape } from '../components/common/Tape';
-import { Search, Plus, FolderPlus, Heart } from 'lucide-react-native';
+import { Search, Plus, FolderPlus, Heart, Eye, EyeOff } from 'lucide-react-native';
 import { Board } from '../types';
 
 export const HomeScreen: React.FC = () => {
@@ -18,6 +18,8 @@ export const HomeScreen: React.FC = () => {
     openGuide,
     openCreateSheet,
     themeMode,
+    showHiddenItems,
+    toggleShowHiddenItems,
   } = useApp();
 
   const [heartBounce] = useState(new Animated.Value(1));
@@ -37,6 +39,9 @@ export const HomeScreen: React.FC = () => {
       setActiveBoardId(boardId);
     }
   };
+
+  const visibleBoards = showHiddenItems ? boards : boards.filter((b) => !b.isHidden);
+  const hiddenBoardsCount = boards.filter((b) => b.isHidden).length;
 
   // Dynamic Theme Color Mapping for the 7 Pastel Atmospheres
   const themeBrandColors: Record<ThemeMode, { primary: string; accent: string; heart: string; moodBg: string; moodText: string; moodLabel: string }> = {
@@ -129,18 +134,42 @@ export const HomeScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Beautified Search Button */}
-        <Pressable
-          onPress={() => setActiveTab('search')}
-          style={({ pressed }) => [styles.searchBtnSquare, pressed && styles.btnPressed]}
-          hitSlop={8}
-        >
-          <Search size={18} color={currentThemeColors.accent} strokeWidth={2.4} />
-        </Pressable>
+        {/* Right Header Actions: Search & Hidden Vault Toggle */}
+        <View style={styles.headerActionsRow}>
+          {hiddenBoardsCount > 0 && (
+            <Pressable
+              onPress={toggleShowHiddenItems}
+              style={({ pressed }) => [
+                styles.vaultBtn,
+                showHiddenItems && styles.vaultBtnActive,
+                pressed && styles.btnPressed,
+              ]}
+              hitSlop={8}
+            >
+              {showHiddenItems ? (
+                <Eye size={16} color="#7C3AED" />
+              ) : (
+                <EyeOff size={16} color={colors.ink.secondary} />
+              )}
+              <Text style={[styles.vaultBtnText, showHiddenItems && styles.vaultBtnTextActive]}>
+                {showHiddenItems ? 'Vault Visible' : `${hiddenBoardsCount} Hidden`}
+              </Text>
+            </Pressable>
+          )}
+
+          {/* Beautified Search Button */}
+          <Pressable
+            onPress={() => setActiveTab('search')}
+            style={({ pressed }) => [styles.searchBtnSquare, pressed && styles.btnPressed]}
+            hitSlop={8}
+          >
+            <Search size={18} color={currentThemeColors.accent} strokeWidth={2.4} />
+          </Pressable>
+        </View>
       </View>
 
       {/* 2. Big Centered 'Create Your First Board' Card when no boards exist */}
-      {boards.length === 0 ? (
+      {visibleBoards.length === 0 && boards.length === 0 ? (
         <View style={styles.emptyStateContainer}>
           <View style={styles.bigNewBoardCard}>
             <Tape variant="top-center" width={56} height={14} color="rgba(251, 113, 133, 0.85)" />
@@ -170,7 +199,7 @@ export const HomeScreen: React.FC = () => {
       ) : (
         /* 3. Consecutive 3-Column Grid: Boards and '+ New Board' Card sit right next to each other */
         <View style={styles.boardsGrid}>
-          {boards.map((board: Board) => (
+          {visibleBoards.map((board: Board) => (
             <PastelBoardCard
               key={board.id}
               boardId={board.id}
@@ -256,6 +285,37 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.2,
   },
+  headerActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  vaultBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  vaultBtnActive: {
+    backgroundColor: '#F3E8FF',
+    borderColor: 'rgba(124, 58, 237, 0.3)',
+  },
+  vaultBtnText: {
+    fontFamily: typography.families.sans,
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.ink.secondary,
+  },
+  vaultBtnTextActive: {
+    color: '#7C3AED',
+    fontWeight: '700',
+  },
   searchBtnSquare: {
     width: 42,
     height: 42,
@@ -265,7 +325,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
     shadowColor: '#2D1B4E',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,

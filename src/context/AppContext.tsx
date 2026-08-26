@@ -69,6 +69,11 @@ export interface AppContextType {
   updatePin: (arg1: string, arg2: string | Partial<Pin>, arg3?: Partial<Pin>) => void;
   deletePin: (arg1: string, arg2?: string) => void;
   toggleFavoritePin: (arg1: string, arg2?: string) => void;
+  toggleHidePin: (arg1: string, arg2?: string) => void;
+  toggleHideBoard: (boardId: string) => void;
+  showHiddenItems: boolean;
+  setShowHiddenItems: (val: boolean | ((prev: boolean) => boolean)) => void;
+  toggleShowHiddenItems: () => void;
   toggleChecklistItem: (arg1: string, arg2: string, arg3?: string) => void;
   updatePinFreeformTransform: (boardId: string, pinId: string, transform: Partial<FreeformTransform>) => void;
   updatePinPosition: (boardId: string, pinId: string, transform: Partial<FreeformTransform>) => void;
@@ -607,6 +612,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const toggleHidePin = (arg1: string, arg2?: string) => {
+    const pinId = arg2 || arg1;
+    setBoards((prev) =>
+      prev.map((board) => ({
+        ...board,
+        pins: board.pins.map((p) => (p.id === pinId ? ({ ...p, isHidden: !p.isHidden } as Pin) : p)),
+      }))
+    );
+    setDeskItems((prev) =>
+      prev.map((item) =>
+        item.pin.id === pinId ? { ...item, pin: { ...item.pin, isHidden: !item.pin.isHidden } as Pin } : item
+      )
+    );
+    if (activePinDetail?.id === pinId) {
+      setActivePinDetail((prev) => (prev ? ({ ...prev, isHidden: !prev.isHidden } as Pin) : null));
+    }
+  };
+
+  const toggleHideBoard = (boardId: string) => {
+    setBoards((prev) =>
+      prev.map((b) => (b.id === boardId ? { ...b, isHidden: !b.isHidden, updatedAt: new Date().toISOString() } : b))
+    );
+  };
+
+  const [showHiddenItems, setShowHiddenItems] = useState(false);
+  const toggleShowHiddenItems = () => setShowHiddenItems((prev) => !prev);
+
   const toggleChecklistItem = (arg1: string, arg2: string, arg3?: string) => {
     const pinId = arg3 ? arg2 : arg1;
     const itemId = arg3 || arg2;
@@ -1057,6 +1089,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updatePin,
         deletePin,
         toggleFavoritePin,
+        toggleHidePin,
+        toggleHideBoard,
+        showHiddenItems,
+        setShowHiddenItems,
+        toggleShowHiddenItems,
         toggleChecklistItem,
         deskItems,
         addToDesk,
