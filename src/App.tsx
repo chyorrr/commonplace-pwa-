@@ -199,7 +199,15 @@ const RootNavigator: React.FC = () => {
   }, [currentTheme]);
 
   if (!isAuthenticated) {
-    return <AuthScreen />;
+    return (
+      <View style={[styles.rootContainer, { backgroundColor: currentTheme.bg }]}>
+        <View style={[styles.ambientOrb, styles.orb1, { backgroundColor: currentTheme.orb1 }, currentTheme.isDark && { opacity: 0.18 }]} pointerEvents="none" />
+        <View style={[styles.ambientOrb, styles.orb2, { backgroundColor: currentTheme.orb2 }, currentTheme.isDark && { opacity: 0.18 }]} pointerEvents="none" />
+        <View style={[styles.ambientOrb, styles.orb3, { backgroundColor: currentTheme.orb3 }, currentTheme.isDark && { opacity: 0.18 }]} pointerEvents="none" />
+        <View style={[styles.ambientOrb, styles.orb4, { backgroundColor: currentTheme.orb4 }, currentTheme.isDark && { opacity: 0.18 }]} pointerEvents="none" />
+        <AuthScreen />
+      </View>
+    );
   }
 
   return (

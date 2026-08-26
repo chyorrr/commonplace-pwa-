@@ -369,13 +369,17 @@ export const AuthScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF2F6',
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'transparent',
   },
   content: {
+    flexGrow: 1,
+    minHeight: '100%',
+    width: '100%',
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 24 : 44,
-    paddingBottom: 40,
-    minHeight: '100%',
+    paddingBottom: 44,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
