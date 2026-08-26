@@ -245,7 +245,10 @@ const styles = StyleSheet.create({
     maxWidth: 500, // Max width for crisp phone aesthetic on web
     height: '100%',
     backgroundColor: 'transparent',
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : 0,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) : (Platform.OS === 'web' ? 'max(0px, env(safe-area-inset-top, 0px))' : 0) as any,
+    paddingBottom: (Platform.OS === 'web' ? 'max(0px, env(safe-area-inset-bottom, 0px))' : 0) as any,
+    paddingLeft: (Platform.OS === 'web' ? 'env(safe-area-inset-left, 0px)' : 0) as any,
+    paddingRight: (Platform.OS === 'web' ? 'env(safe-area-inset-right, 0px)' : 0) as any,
     alignSelf: 'center',
     position: 'relative',
     overflow: 'hidden',
@@ -266,7 +269,7 @@ const styles = StyleSheet.create({
   },
   toastBanner: {
     position: 'absolute',
-    top: 14,
+    top: (Platform.OS === 'web' ? 'max(14px, env(safe-area-inset-top, 14px))' : 14) as any,
     left: 14,
     right: 14,
     backgroundColor: '#FFFFFF',

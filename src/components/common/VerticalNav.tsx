@@ -319,8 +319,8 @@ const styles = StyleSheet.create({
   floatingNavCapsule: {
     position: 'absolute',
     right: 12,
-    top: 40,
-    bottom: 40,
+    top: (Platform.OS === 'web' ? 'max(24px, env(safe-area-inset-top, 24px))' : 24) as any,
+    bottom: (Platform.OS === 'web' ? 'max(24px, env(safe-area-inset-bottom, 24px))' : 24) as any,
     width: 66,
     borderRadius: 28,
     backgroundColor: '#FFFFFF',
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
   bottomLeftWidget: {
     position: 'absolute',
     left: 14,
-    bottom: 20,
+    bottom: (Platform.OS === 'web' ? 'max(20px, env(safe-area-inset-bottom, 20px))' : 20) as any,
     width: 175,
     height: 54,
     borderRadius: 20,

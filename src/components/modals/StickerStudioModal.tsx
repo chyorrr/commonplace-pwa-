@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, Image, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, Image, TextInput, ScrollView, Platform } from 'react-native';
 import { useApp } from '../../context/AppContext';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
@@ -490,7 +490,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(30, 20, 45, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    padding: 14,
+    paddingTop: (Platform.OS === 'web' ? 'max(20px, env(safe-area-inset-top, 20px))' : 20) as any,
+    paddingBottom: (Platform.OS === 'web' ? 'max(20px, env(safe-area-inset-bottom, 20px))' : 20) as any,
+    paddingLeft: (Platform.OS === 'web' ? 'max(14px, env(safe-area-inset-left, 14px))' : 14) as any,
+    paddingRight: (Platform.OS === 'web' ? 'max(14px, env(safe-area-inset-right, 14px))' : 14) as any,
   },
   sheetContainer: {
     width: '100%',
@@ -503,7 +507,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 24,
-    maxHeight: '88%',
+    maxHeight: '86%',
     position: 'relative',
   },
   headerRow: {

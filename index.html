@@ -78,6 +78,20 @@
         overscroll-behavior-y: contain;
       }
 
+      /* Safe area utility classes for iOS standalone / web view */
+      .safe-top-padding {
+        padding-top: max(16px, env(safe-area-inset-top, 16px)) !important;
+      }
+      .safe-bottom-padding {
+        padding-bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
+      }
+      .safe-modal-overlay {
+        padding-top: max(20px, env(safe-area-inset-top, 20px)) !important;
+        padding-bottom: max(20px, env(safe-area-inset-bottom, 20px)) !important;
+        padding-left: max(16px, env(safe-area-inset-left, 16px)) !important;
+        padding-right: max(16px, env(safe-area-inset-right, 16px)) !important;
+      }
+
       /* Subtle tactile paper grain overlay */
       .paper-noise {
         position: absolute;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, Image, Platform } from 'react-native';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { X, MessageCircle, Instagram, MoreHorizontal, FileImage, FileText, Type, Link2, Check } from 'lucide-react-native';
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 30,
     paddingHorizontal: 24,
     paddingTop: 20,
-    paddingBottom: 36,
+    paddingBottom: (Platform.OS === 'web' ? 'max(28px, env(safe-area-inset-bottom, 28px))' : 28) as any,
     gap: 20,
   },
   headerRow: {

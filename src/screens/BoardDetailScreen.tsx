@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Platform } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
@@ -25,6 +25,9 @@ export const BoardDetailScreen: React.FC = () => {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // iOS Edge Swipe Back Gesture
+  const touchStartRef = useRef<{ x: number; y: number; time: number }>({ x: 0, y: 0, time: 0 });
+
   if (!activeBoard) return null;
 
   const boardBg = activeBoard.colorHex || '#FFF5ED';
@@ -37,14 +40,49 @@ export const BoardDetailScreen: React.FC = () => {
     setShowDeleteConfirm(false);
   };
 
+  const handleTouchStart = (e: any) => {
+    const touch = e.nativeEvent?.touches?.[0] || e.nativeEvent;
+    if (touch) {
+      touchStartRef.current = {
+        x: touch.pageX || touch.clientX || 0,
+        y: touch.pageY || touch.clientY || 0,
+        time: Date.now(),
+      };
+    }
+  };
+
+  const handleTouchEnd = (e: any) => {
+    const touch = e.nativeEvent?.changedTouches?.[0] || e.nativeEvent;
+    if (touch && touchStartRef.current) {
+      const deltaX = (touch.pageX || touch.clientX || 0) - touchStartRef.current.x;
+      const deltaY = Math.abs((touch.pageY || touch.clientY || 0) - touchStartRef.current.y);
+      const deltaTime = Date.now() - touchStartRef.current.time;
+
+      // If swipe started near left edge (< 60px) and moved right > 70px with low vertical slope
+      if (touchStartRef.current.x < 70 && deltaX > 65 && deltaY < 80 && deltaTime < 400) {
+        setActiveBoardId(null);
+      }
+    }
+  };
+
   return (
-    <View style={[styles.container, { backgroundColor: boardBg }]}>
+    <View
+      style={[styles.container, { backgroundColor: boardBg }]}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* 1. Top Header */}
       <View style={styles.headerRow}>
         {/* Left Side: Back & Delete Board */}
         <View style={styles.headerLeftGroup}>
-          <Pressable onPress={() => setActiveBoardId(null)} style={styles.backBtn} hitSlop={10}>
-            <ChevronLeft size={24} color={colors.ink.primary} />
+          <Pressable
+            onPress={() => setActiveBoardId(null)}
+            style={({ pressed }) => [styles.backBtnPill, pressed && styles.btnPressed]}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            accessibilityLabel="Back to boards"
+          >
+            <ChevronLeft size={20} color={colors.ink.primary} strokeWidth={2.6} />
+            <Text style={styles.backBtnLabel}>Boards</Text>
           </Pressable>
 
           <Pressable
@@ -53,7 +91,7 @@ export const BoardDetailScreen: React.FC = () => {
             hitSlop={8}
             accessibilityLabel="Delete board"
           >
-            <Trash2 size={18} color={colors.accents.terracotta} strokeWidth={2} />
+            <Trash2 size={17} color={colors.accents.terracotta} strokeWidth={2} />
           </Pressable>
         </View>
 
@@ -251,29 +289,56 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: 14,
+    paddingTop: (Platform.OS === 'web' ? 'max(12px, env(safe-area-inset-top, 12px))' : 12) as any,
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.04)',
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: 'rgba(255, 255, 255, 0.45)',
   },
   headerLeftGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
   headerRightGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+  },
+  backBtnPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 9,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+    gap: 2,
+  },
+  backBtnLabel: {
+    fontFamily: typography.families.sans,
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.ink.primary,
+    marginRight: 2,
   },
   headerIconBtn: {
     padding: 8,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.65)',
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.82)',
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
   hiddenPill: {
     flexDirection: 'row',
@@ -315,6 +380,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
+    paddingTop: (Platform.OS === 'web' ? 'max(20px, env(safe-area-inset-top, 20px))' : 20) as any,
+    paddingBottom: (Platform.OS === 'web' ? 'max(20px, env(safe-area-inset-bottom, 20px))' : 20) as any,
   },
   deleteModalCard: {
     width: '100%',
@@ -396,25 +463,29 @@ const styles = StyleSheet.create({
   },
   boardTitle: {
     fontFamily: typography.families.heading,
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '700',
     color: colors.ink.primary,
     letterSpacing: -0.3,
   },
   boardSubtitle: {
     fontFamily: typography.families.sans,
-    fontSize: 12,
+    fontSize: 11.5,
     color: colors.ink.tertiary,
   },
   menuBtn: {
-    padding: 6,
+    padding: 8,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
   },
   canvasScroll: {
     flex: 1,
   },
   canvasContent: {
     padding: 14,
-    paddingBottom: 100,
+    paddingBottom: 110,
   },
   canvasWrapper: {
     width: '100%',
@@ -487,7 +558,7 @@ const styles = StyleSheet.create({
   },
   floatingBottomDock: {
     position: 'absolute',
-    bottom: 20,
+    bottom: (Platform.OS === 'web' ? 'max(20px, env(safe-area-inset-bottom, 20px))' : 20) as any,
     alignSelf: 'center',
     zIndex: 50,
   },
