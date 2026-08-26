@@ -67,88 +67,85 @@ export const BoardDetailScreen: React.FC = () => {
 
   return (
     <View
-      style={[styles.container, { backgroundColor: boardBg }]}
+      style={styles.container}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* 1. Sleek Top Navigation Bar */}
-      <View style={styles.topNavBar}>
-        <Pressable
-          onPress={() => setActiveBoardId(null)}
-          style={({ pressed }) => [styles.backBtnPill, pressed && styles.btnPressed]}
-          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-          accessibilityLabel="Back to boards"
-        >
-          <ChevronLeft size={18} color={colors.ink.primary} strokeWidth={2.6} />
-          <Text style={styles.backBtnLabel}>Boards</Text>
-        </Pressable>
-
-        <View style={styles.topNavActions}>
-          {/* Hide / Unhide Board Toggle */}
-          <Pressable
-            onPress={() => toggleHideBoard(activeBoard.id)}
-            style={({ pressed }) => [styles.navActionBtn, pressed && styles.btnPressed]}
-            hitSlop={8}
-            accessibilityLabel={activeBoard.isHidden ? 'Unhide board' : 'Hide board'}
-          >
-            {activeBoard.isHidden ? (
-              <Eye size={17} color="#7C3AED" strokeWidth={2} />
-            ) : (
-              <EyeOff size={17} color={colors.ink.secondary} strokeWidth={1.8} />
-            )}
-          </Pressable>
-
-          {/* More / Export Options */}
-          <Pressable
-            onPress={() => setIsExportOpen(true)}
-            style={({ pressed }) => [styles.navActionBtn, pressed && styles.btnPressed]}
-            hitSlop={8}
-          >
-            <MoreHorizontal size={19} color={colors.ink.primary} />
-          </Pressable>
-
-          {/* Delete Board */}
-          <Pressable
-            onPress={() => setShowDeleteConfirm(true)}
-            style={({ pressed }) => [styles.navActionBtn, pressed && styles.btnPressed]}
-            hitSlop={8}
-            accessibilityLabel="Delete board"
-          >
-            <Trash2 size={16} color={colors.accents.terracotta} strokeWidth={2} />
-          </Pressable>
-        </View>
-      </View>
-
-      {/* 2. Scrapbook Pins Canvas & Spacious Header */}
       <ScrollView
         style={styles.canvasScroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.canvasContent}
       >
-        {/* Spacious Board Title & Mood Pill matching the Home Screen Header */}
-        <View style={styles.boardHeaderBlock}>
-          <Tape variant="diagonal-left" width={38} height={10} color="rgba(255, 182, 193, 0.75)" />
+        {/* 1. Header matching Home Screen layout exactly */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerTitleGroup}>
+            <Tape variant="diagonal-left" width={38} height={10} color="rgba(255, 182, 193, 0.75)" />
 
-          <View style={styles.boardTitleLine}>
-            <Text style={styles.boardTitleText} numberOfLines={1}>{activeBoard.title}</Text>
-            {activeBoard.isHidden && (
-              <View style={styles.hiddenPill}>
-                <EyeOff size={10} color="#7C3AED" />
-                <Text style={styles.hiddenPillText}>Hidden</Text>
-              </View>
-            )}
+            <Pressable
+              onPress={() => setActiveBoardId(null)}
+              style={styles.titleWithBack}
+              hitSlop={8}
+              accessibilityLabel="Back to boards"
+            >
+              <ChevronLeft size={24} color={colors.ink.primary} strokeWidth={2.8} />
+              <Text style={styles.boardMainTitle} numberOfLines={1}>
+                {activeBoard.title}
+              </Text>
+              {activeBoard.isHidden && (
+                <View style={styles.hiddenPill}>
+                  <EyeOff size={10} color="#7C3AED" />
+                  <Text style={styles.hiddenPillText}>Hidden</Text>
+                </View>
+              )}
+            </Pressable>
+
+            {/* Cute Mood / Count Capsule matching Home Screen */}
+            <View style={styles.moodCapsule}>
+              <Text style={styles.moodCapsuleText}>
+                {pins.length === 1 ? '1 item captured ♡' : `${pins.length} items captured ♡`}
+                {hiddenCount > 0 && !showHiddenItems ? ` • ${hiddenCount} hidden` : ''}
+              </Text>
+            </View>
           </View>
 
-          {/* Cute Mood / Count Capsule */}
-          <View style={styles.countCapsule}>
-            <Text style={styles.countCapsuleText}>
-              {pins.length === 1 ? '1 item captured ♡' : `${pins.length} items captured ♡`}
-              {hiddenCount > 0 && !showHiddenItems ? ` • ${hiddenCount} hidden` : ''}
-            </Text>
+          {/* Right Header Actions matching Home Screen Search Button */}
+          <View style={styles.headerActionsRow}>
+            {/* Hide / Unhide Board Toggle */}
+            <Pressable
+              onPress={() => toggleHideBoard(activeBoard.id)}
+              style={({ pressed }) => [styles.headerBtnSquare, pressed && styles.btnPressed]}
+              hitSlop={6}
+              accessibilityLabel={activeBoard.isHidden ? 'Unhide board' : 'Hide board'}
+            >
+              {activeBoard.isHidden ? (
+                <Eye size={18} color="#7C3AED" strokeWidth={2} />
+              ) : (
+                <EyeOff size={18} color={colors.ink.secondary} strokeWidth={1.8} />
+              )}
+            </Pressable>
+
+            {/* More / Export Options */}
+            <Pressable
+              onPress={() => setIsExportOpen(true)}
+              style={({ pressed }) => [styles.headerBtnSquare, pressed && styles.btnPressed]}
+              hitSlop={6}
+            >
+              <MoreHorizontal size={18} color={colors.ink.primary} strokeWidth={2} />
+            </Pressable>
+
+            {/* Delete Board */}
+            <Pressable
+              onPress={() => setShowDeleteConfirm(true)}
+              style={({ pressed }) => [styles.headerBtnSquare, pressed && styles.btnPressed]}
+              hitSlop={6}
+              accessibilityLabel="Delete board"
+            >
+              <Trash2 size={16} color={colors.accents.terracotta} strokeWidth={2} />
+            </Pressable>
           </View>
         </View>
 
-        <View id="board-canvas-container" style={[styles.canvasWrapper, { backgroundColor: boardBg }]}>
+        <View id="board-canvas-container" style={styles.canvasWrapper}>
           {/* Hidden Items Notice Banner */}
           {hiddenCount > 0 && (
             <Pressable
@@ -292,90 +289,71 @@ export const BoardDetailScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: 'transparent',
     position: 'relative',
   },
-  topNavBar: {
+  headerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 8,
-    backgroundColor: 'transparent',
-  },
-  topNavActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  backBtnPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.88)',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-    gap: 2,
-  },
-  backBtnLabel: {
-    fontFamily: typography.families.sans,
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.ink.primary,
-    marginRight: 2,
-  },
-  navActionBtn: {
-    padding: 7,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-  },
-  boardHeaderBlock: {
     marginBottom: 16,
-    paddingHorizontal: 4,
     paddingTop: 4,
+    paddingHorizontal: 4,
   },
-  boardTitleLine: {
+  headerTitleGroup: {
+    flex: 1,
+    position: 'relative',
+  },
+  titleWithBack: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 6,
-    marginBottom: 4,
+    gap: 2,
+    marginTop: 4,
+    marginLeft: -4,
   },
-  boardTitleText: {
+  boardMainTitle: {
     fontFamily: typography.families.heading,
     fontSize: 26,
     fontWeight: '800',
     color: colors.ink.primary,
     letterSpacing: -0.4,
   },
-  countCapsule: {
+  moodCapsule: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    paddingHorizontal: 8,
     paddingVertical: 3,
-    paddingHorizontal: 9,
-    borderRadius: 10,
-    marginTop: 2,
+    borderRadius: 12,
+    marginTop: 4,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.05)',
   },
-  countCapsuleText: {
+  moodCapsuleText: {
     fontFamily: typography.families.sans,
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
     color: colors.ink.secondary,
+    letterSpacing: 0.2,
+  },
+  headerActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  headerBtnSquare: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2D1B4E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
   },
   hiddenPill: {
     flexDirection: 'row',
@@ -489,33 +467,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
-  },
-  backBtn: {
-    padding: 6,
-  },
-  headerTitleGroup: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 1,
-  },
-  boardTitle: {
-    fontFamily: typography.families.heading,
-    fontSize: 19,
-    fontWeight: '700',
-    color: colors.ink.primary,
-    letterSpacing: -0.3,
-  },
-  boardSubtitle: {
-    fontFamily: typography.families.sans,
-    fontSize: 11.5,
-    color: colors.ink.tertiary,
-  },
-  menuBtn: {
-    padding: 8,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
   },
   canvasScroll: {
     flex: 1,
