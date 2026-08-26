@@ -325,28 +325,48 @@ export const AuthScreen: React.FC = () => {
               </View>
             )}
 
-            <View style={styles.themeGrid}>
+            <View style={styles.themeGrid2Col}>
               {THEME_OPTIONS.map((theme) => {
                 const isSelected = selectedTheme === theme.id;
+                const isDarkTheme = theme.id === 'dark';
                 return (
                   <Pressable
                     key={theme.id}
                     onPress={() => setSelectedTheme(theme.id)}
                     style={[
-                      styles.themeCard,
+                      styles.themeGridCard,
                       { backgroundColor: theme.bgHex },
                       isSelected && { borderColor: theme.accentHex, borderWidth: 2 },
+                      isDarkTheme && styles.darkThemeCard,
+                      theme.id === 'dark' && styles.fullWidthThemeCard,
                     ]}
                   >
                     <View style={styles.themeCardHeader}>
                       <View style={[styles.swatchCircle, { backgroundColor: theme.accentHex }]}>
-                        {isSelected && <Check size={12} color="#FFFFFF" strokeWidth={3} />}
+                        {isSelected && (
+                          <Check size={10} color={isDarkTheme ? '#1E1927' : '#FFFFFF'} strokeWidth={3.5} />
+                        )}
                       </View>
-                      <Text style={[styles.themeCardName, isSelected && { color: theme.accentHex }]}>
+                      <Text
+                        style={[
+                          styles.themeCardName,
+                          { color: isDarkTheme ? '#FFFFFF' : colors.ink.primary },
+                          isSelected && !isDarkTheme && { color: theme.accentHex },
+                        ]}
+                        numberOfLines={1}
+                      >
                         {theme.name}
                       </Text>
                     </View>
-                    <Text style={styles.themeCardSub}>{theme.subtitle}</Text>
+                    <Text
+                      style={[
+                        styles.themeCardSub,
+                        { color: isDarkTheme ? 'rgba(255,255,255,0.7)' : colors.ink.secondary },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {theme.subtitle}
+                    </Text>
                   </Pressable>
                 );
               })}
@@ -354,7 +374,7 @@ export const AuthScreen: React.FC = () => {
 
             <Pressable
               onPress={handleConfirmThemeAndEnter}
-              style={({ pressed }) => [styles.submitBtn, pressed && styles.btnPressed]}
+              style={({ pressed }) => [styles.submitBtn, pressed && styles.btnPressed, { marginTop: 12 }]}
             >
               <Text style={styles.submitBtnText}>Enter Commonplace</Text>
               <ArrowRight size={16} color="#FFFFFF" strokeWidth={2.4} />
@@ -696,39 +716,52 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.brand.purpleDark,
   },
-  themeGrid: {
+  themeGrid2Col: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    maxHeight: 280,
+    justifyContent: 'space-between',
+    marginTop: 4,
   },
-  themeCard: {
+  themeGridCard: {
+    width: '48.5%',
     borderRadius: 14,
-    padding: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.07)',
+  },
+  darkThemeCard: {
+    backgroundColor: '#1E1927',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  fullWidthThemeCard: {
+    width: '100%',
   },
   themeCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     marginBottom: 2,
   },
   swatchCircle: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
   },
   themeCardName: {
     fontFamily: typography.families.sans,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.ink.primary,
+    flex: 1,
   },
   themeCardSub: {
     fontFamily: typography.families.sans,
-    fontSize: 11,
+    fontSize: 10,
     color: colors.ink.secondary,
-    marginLeft: 24,
+    marginLeft: 20,
   },
 });
