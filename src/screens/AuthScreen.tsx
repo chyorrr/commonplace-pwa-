@@ -4,7 +4,7 @@ import { useApp, UserProfile, ThemeMode } from '../context/AppContext';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Tape } from '../components/common/Tape';
-import { ArrowRight, Lock, Mail, User, Check, Camera, ChevronLeft, Palette } from 'lucide-react-native';
+import { ArrowRight, Lock, Mail, User, Check, Camera, ChevronLeft } from 'lucide-react-native';
 import { DeviceImagePicker } from '../components/common/DeviceImagePicker';
 import { UserAvatar } from '../components/common/UserAvatar';
 import { AVATAR_PRESETS } from '../data/avatarPresets';
@@ -30,49 +30,85 @@ const THEME_OPTIONS: ThemeOption[] = [
 ];
 
 export const AuthScreen: React.FC = () => {
-  const { login, savedAccounts, setThemeMode } = useApp();
+  const { login, savedAccounts, setThemeMode, themeMode } = useApp();
 
   const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [signupStep, setSignupStep] = useState<'details' | 'theme'>('details');
+  const [authStep, setAuthStep] = useState<'form' | 'theme'>('form');
 
   // Form Fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedAvatar, setSelectedAvatar] = useState<string>('avatar:matcha');
-  const [selectedTheme, setSelectedTheme] = useState<ThemeMode>('sakura');
+  const [selectedAvatar, setSelectedAvatar] = useState<string>('avatar:camera');
+  const [selectedTheme, setSelectedTheme] = useState<ThemeMode>(themeMode || 'sakura');
   const [errorMsg, setErrorMsg] = useState('');
+  const [pendingUser, setPendingUser] = useState<UserProfile | null>(null);
 
-  const handleProceedToTheme = () => {
+  // Quick select a saved account -> go to theme selection first
+  const handleSelectSavedAccount = (acc: UserProfile) => {
+    setPendingUser(acc);
+    setErrorMsg('');
+    setAuthStep('theme');
+  };
+
+  // Sign in form validation -> go to theme selection first
+  const handleSignInProceed = () => {
     if (!email.trim() || !password.trim()) {
       setErrorMsg('Please enter both email and password.');
       return;
     }
-    if (mode === 'signup' && !name.trim()) {
+    setErrorMsg('');
+
+    const existing = savedAccounts.find((a) => a.email.toLowerCase() === email.trim().toLowerCase());
+    if (existing) {
+      setPendingUser(existing);
+    } else {
+      const userDisplayName = email.split('@')[0] || 'Collector';
+      setPendingUser({
+        id: `user-${Date.now()}`,
+        email: email.trim(),
+        name: userDisplayName,
+        bio: 'Scrapbook Collector',
+        avatarUrl: 'avatar:camera',
+      });
+    }
+    setAuthStep('theme');
+  };
+
+  // Create account form validation -> go to theme selection first
+  const handleSignupProceed = () => {
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg('Please enter both email and password.');
+      return;
+    }
+    if (!name.trim()) {
       setErrorMsg('Please enter your name.');
       return;
     }
     setErrorMsg('');
-    setSignupStep('theme');
-  };
 
-  const handleCompleteSignup = () => {
     const userDisplayName = name.trim() || email.split('@')[0] || 'Collector';
-    
-    // Set user theme
-    setThemeMode(selectedTheme);
-
-    const newUser: UserProfile = {
+    setPendingUser({
       id: `user-${Date.now()}`,
       email: email.trim(),
       name: userDisplayName,
       bio: 'Scrapbook Collector',
       avatarUrl: selectedAvatar,
-    };
+    });
+    setAuthStep('theme');
+  };
 
-    login(newUser);
+  // Confirm theme and enter the scrapbook app
+  const handleConfirmThemeAndEnter = () => {
+    if (!pendingUser) return;
 
-    // Show subtle floating toast notification
+    // Apply chosen theme
+    setThemeMode(selectedTheme);
+
+    // Complete login
+    login(pendingUser);
+
+    // Subtle floating notification
     const themeName = THEME_OPTIONS.find((t) => t.id === selectedTheme)?.name || 'Custom';
     setTimeout(() => {
       reminderService.showToast(
@@ -80,31 +116,6 @@ export const AuthScreen: React.FC = () => {
         `Theme set to ${themeName}. You can change it anytime in Settings.`
       );
     }, 400);
-  };
-
-  const handleSignIn = () => {
-    if (!email.trim() || !password.trim()) {
-      setErrorMsg('Please enter both email and password.');
-      return;
-    }
-    setErrorMsg('');
-    
-    // Check if account already exists in saved accounts
-    const existing = savedAccounts.find((a) => a.email.toLowerCase() === email.trim().toLowerCase());
-    if (existing) {
-      login(existing);
-      return;
-    }
-
-    // Otherwise sign in with entered credentials
-    const userDisplayName = email.split('@')[0] || 'Collector';
-    login({
-      id: `user-${Date.now()}`,
-      email: email.trim(),
-      name: userDisplayName,
-      bio: 'Scrapbook Collector',
-      avatarUrl: 'avatar:camera',
-    });
   };
 
   return (
@@ -131,175 +142,168 @@ export const AuthScreen: React.FC = () => {
           <Text style={styles.brandSubtitle}>Things worth keeping</Text>
         </View>
 
-        {/* Saved Profiles 1-Tap Quick Switch */}
-        {mode === 'login' && savedAccounts && savedAccounts.length > 0 && (
-          <View style={styles.savedProfilesWrap}>
-            <Text style={styles.savedProfilesTitle}>Continue as:</Text>
-            <View style={styles.savedAccountsRow}>
-              {savedAccounts.map((acc: UserProfile) => (
-                <Pressable
-                  key={acc.id}
-                  onPress={() => login(acc)}
-                  style={({ pressed }) => [styles.quickAccBtn, pressed && styles.btnPressed]}
-                >
-                  <UserAvatar avatarUrl={acc.avatarUrl} name={acc.name} size={32} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.quickAccName} numberOfLines={1}>{acc.name}</Text>
-                    <Text style={styles.quickAccEmail} numberOfLines={1}>{acc.email}</Text>
-                  </View>
-                  <ArrowRight size={14} color={colors.brand.purpleDark} />
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Login / Sign Up Tabs */}
-        {signupStep === 'details' && (
-          <View style={styles.tabToggleRow}>
-            <Pressable
-              onPress={() => {
-                setMode('login');
-                setErrorMsg('');
-              }}
-              style={[styles.tabBtn, mode === 'login' && styles.tabBtnActive]}
-            >
-              <Text style={[styles.tabText, mode === 'login' && styles.tabTextActive]}>Sign In</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                setMode('signup');
-                setErrorMsg('');
-              }}
-              style={[styles.tabBtn, mode === 'signup' && styles.tabBtnActive]}
-            >
-              <Text style={[styles.tabText, mode === 'signup' && styles.tabTextActive]}>Create Account</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {/* Step 1: Sign In or Account Info */}
-        {signupStep === 'details' ? (
-          <View style={styles.formFields}>
-            {mode === 'signup' && (
-              <>
-                {/* Avatar Selection Block */}
-                <View style={styles.avatarSection}>
-                  <Text style={styles.fieldLabel}>Choose Avatar or Upload Photo</Text>
-                  <View style={styles.avatarPickerRow}>
-                    <View style={styles.previewAvatarWrap}>
-                      <UserAvatar avatarUrl={selectedAvatar} name={name || 'User'} size={52} />
-                    </View>
-
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.avatarScrollContent}
+        {/* Step 1: Form Inputs & Saved Accounts */}
+        {authStep === 'form' ? (
+          <>
+            {/* Saved Profiles 1-Tap Quick Switch */}
+            {mode === 'login' && savedAccounts && savedAccounts.length > 0 && (
+              <View style={styles.savedProfilesWrap}>
+                <Text style={styles.savedProfilesTitle}>Continue as:</Text>
+                <View style={styles.savedAccountsRow}>
+                  {savedAccounts.map((acc: UserProfile) => (
+                    <Pressable
+                      key={acc.id}
+                      onPress={() => handleSelectSavedAccount(acc)}
+                      style={({ pressed }) => [styles.quickAccBtn, pressed && styles.btnPressed]}
                     >
-                      {AVATAR_PRESETS.map((preset) => {
-                        const isSelected = selectedAvatar === preset.id;
-                        return (
-                          <Pressable
-                            key={preset.id}
-                            onPress={() => setSelectedAvatar(preset.id)}
-                            style={[
-                              styles.presetAvatarBtn,
-                              { backgroundColor: preset.bg, borderColor: isSelected ? colors.brand.purpleDark : preset.border },
-                              isSelected && styles.presetAvatarSelected,
-                            ]}
-                          >
-                            <UserAvatar avatarUrl={preset.id} size={30} showBorder={false} />
-                            {isSelected && (
-                              <View style={styles.avatarCheckBadge}>
-                                <Check size={10} color="#FFFFFF" strokeWidth={3} />
-                              </View>
-                            )}
-                          </Pressable>
-                        );
-                      })}
+                      <UserAvatar avatarUrl={acc.avatarUrl} name={acc.name} size={32} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.quickAccName} numberOfLines={1}>{acc.name}</Text>
+                        <Text style={styles.quickAccEmail} numberOfLines={1}>{acc.email}</Text>
+                      </View>
+                      <ArrowRight size={14} color={colors.brand.purpleDark} />
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
 
-                      {/* Custom Image Upload Option */}
-                      <DeviceImagePicker
-                        onImageSelected={(base64) => setSelectedAvatar(base64)}
-                        style={styles.uploadAvatarBtn}
+            {/* Login / Sign Up Tabs */}
+            <View style={styles.tabToggleRow}>
+              <Pressable
+                onPress={() => {
+                  setMode('login');
+                  setErrorMsg('');
+                }}
+                style={[styles.tabBtn, mode === 'login' && styles.tabBtnActive]}
+              >
+                <Text style={[styles.tabText, mode === 'login' && styles.tabTextActive]}>Sign In</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setMode('signup');
+                  setErrorMsg('');
+                }}
+                style={[styles.tabBtn, mode === 'signup' && styles.tabBtnActive]}
+              >
+                <Text style={[styles.tabText, mode === 'signup' && styles.tabTextActive]}>Create Account</Text>
+              </Pressable>
+            </View>
+
+            {/* Input Fields */}
+            <View style={styles.formFields}>
+              {mode === 'signup' && (
+                <>
+                  {/* Avatar Selection Block */}
+                  <View style={styles.avatarSection}>
+                    <Text style={styles.fieldLabel}>Choose Avatar or Upload Photo</Text>
+                    <View style={styles.avatarPickerRow}>
+                      <View style={styles.previewAvatarWrap}>
+                        <UserAvatar avatarUrl={selectedAvatar} name={name || 'User'} size={52} />
+                      </View>
+
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.avatarScrollContent}
                       >
-                        <Camera size={16} color={colors.ink.secondary} />
-                        <Text style={styles.uploadAvatarText}>Photo</Text>
-                      </DeviceImagePicker>
-                    </ScrollView>
+                        {AVATAR_PRESETS.map((preset) => {
+                          const isSelected = selectedAvatar === preset.id;
+                          return (
+                            <Pressable
+                              key={preset.id}
+                              onPress={() => setSelectedAvatar(preset.id)}
+                              style={[
+                                styles.presetAvatarBtn,
+                                { backgroundColor: preset.bg, borderColor: isSelected ? colors.brand.purpleDark : preset.border },
+                                isSelected && styles.presetAvatarSelected,
+                              ]}
+                            >
+                              <UserAvatar avatarUrl={preset.id} size={30} showBorder={false} />
+                              {isSelected && (
+                                <View style={styles.avatarCheckBadge}>
+                                  <Check size={10} color="#FFFFFF" strokeWidth={3} />
+                                </View>
+                              )}
+                            </Pressable>
+                          );
+                        })}
+
+                        {/* Custom Image Upload Option */}
+                        <DeviceImagePicker
+                          onImageSelected={(base64) => setSelectedAvatar(base64)}
+                          style={styles.uploadAvatarBtn}
+                        >
+                          <Camera size={16} color={colors.ink.secondary} />
+                          <Text style={styles.uploadAvatarText}>Photo</Text>
+                        </DeviceImagePicker>
+                      </ScrollView>
+                    </View>
                   </View>
-                </View>
 
-                {/* Name Input */}
-                <View style={styles.inputWrapper}>
-                  <User size={16} color={colors.ink.tertiary} style={styles.inputIcon} />
-                  <TextInput
-                    value={name}
-                    onChangeText={setName}
-                    placeholder="Your Name"
-                    placeholderTextColor={colors.ink.faded}
-                    style={styles.textInput}
-                  />
-                </View>
-              </>
-            )}
+                  {/* Name Input */}
+                  <View style={styles.inputWrapper}>
+                    <User size={16} color={colors.ink.tertiary} style={styles.inputIcon} />
+                    <TextInput
+                      value={name}
+                      onChangeText={setName}
+                      placeholder="Your Name"
+                      placeholderTextColor={colors.ink.faded}
+                      style={styles.textInput}
+                    />
+                  </View>
+                </>
+              )}
 
-            {/* Email Input */}
-            <View style={styles.inputWrapper}>
-              <Mail size={16} color={colors.ink.tertiary} style={styles.inputIcon} />
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Email Address"
-                placeholderTextColor={colors.ink.faded}
-                style={styles.textInput}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
+              {/* Email Input */}
+              <View style={styles.inputWrapper}>
+                <Mail size={16} color={colors.ink.tertiary} style={styles.inputIcon} />
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Email Address"
+                  placeholderTextColor={colors.ink.faded}
+                  style={styles.textInput}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
 
-            {/* Password Input */}
-            <View style={styles.inputWrapper}>
-              <Lock size={16} color={colors.ink.tertiary} style={styles.inputIcon} />
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Password"
-                placeholderTextColor={colors.ink.faded}
-                style={styles.textInput}
-                secureTextEntry
-              />
-            </View>
+              {/* Password Input */}
+              <View style={styles.inputWrapper}>
+                <Lock size={16} color={colors.ink.tertiary} style={styles.inputIcon} />
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Password"
+                  placeholderTextColor={colors.ink.faded}
+                  style={styles.textInput}
+                  secureTextEntry
+                />
+              </View>
 
-            {Boolean(errorMsg) && (
-              <Text style={styles.errorText}>{errorMsg}</Text>
-            )}
+              {Boolean(errorMsg) && (
+                <Text style={styles.errorText}>{errorMsg}</Text>
+              )}
 
-            {/* Action Buttons */}
-            {mode === 'signup' ? (
+              {/* Proceed Button */}
               <Pressable
-                onPress={handleProceedToTheme}
+                onPress={mode === 'signup' ? handleSignupProceed : handleSignInProceed}
                 style={({ pressed }) => [styles.submitBtn, pressed && styles.btnPressed]}
               >
-                <Text style={styles.submitBtnText}>Choose Theme</Text>
+                <Text style={styles.submitBtnText}>
+                  {mode === 'signup' ? 'Choose Theme' : 'Choose Theme & Sign In'}
+                </Text>
                 <ArrowRight size={16} color="#FFFFFF" strokeWidth={2.4} />
               </Pressable>
-            ) : (
-              <Pressable
-                onPress={handleSignIn}
-                style={({ pressed }) => [styles.submitBtn, pressed && styles.btnPressed]}
-              >
-                <Text style={styles.submitBtnText}>Sign In</Text>
-                <ArrowRight size={16} color="#FFFFFF" strokeWidth={2.4} />
-              </Pressable>
-            )}
-          </View>
+            </View>
+          </>
         ) : (
-          /* Step 2: Theme Atmosphere Selection */
+          /* Step 2: Choose Theme Atmosphere First */
           <View style={styles.themeStepWrap}>
             <View style={styles.stepHeaderRow}>
               <Pressable
-                onPress={() => setSignupStep('details')}
+                onPress={() => setAuthStep('form')}
                 style={styles.backStepBtn}
                 hitSlop={8}
               >
@@ -307,9 +311,19 @@ export const AuthScreen: React.FC = () => {
               </Pressable>
               <View style={{ flex: 1 }}>
                 <Text style={styles.themeStepTitle}>Choose Your Atmosphere</Text>
-                <Text style={styles.themeStepSubtitle}>Select the mood for your scrapbooks</Text>
+                <Text style={styles.themeStepSubtitle}>Select your starting theme</Text>
               </View>
             </View>
+
+            {/* Profile Confirmation Pill */}
+            {Boolean(pendingUser) && (
+              <View style={styles.userConfirmRow}>
+                <UserAvatar avatarUrl={pendingUser?.avatarUrl} name={pendingUser?.name} size={28} />
+                <Text style={styles.userConfirmText} numberOfLines={1}>
+                  Signing in as <Text style={styles.boldText}>{pendingUser?.name}</Text>
+                </Text>
+              </View>
+            )}
 
             <View style={styles.themeGrid}>
               {THEME_OPTIONS.map((theme) => {
@@ -339,10 +353,10 @@ export const AuthScreen: React.FC = () => {
             </View>
 
             <Pressable
-              onPress={handleCompleteSignup}
+              onPress={handleConfirmThemeAndEnter}
               style={({ pressed }) => [styles.submitBtn, pressed && styles.btnPressed]}
             >
-              <Text style={styles.submitBtnText}>Start Scrapbooking</Text>
+              <Text style={styles.submitBtnText}>Enter Commonplace</Text>
               <ArrowRight size={16} color="#FFFFFF" strokeWidth={2.4} />
             </Pressable>
           </View>
@@ -431,11 +445,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#7C3AED',
     letterSpacing: -0.5,
-  },
-  brandHeart: {
-    fontSize: 18,
-    color: '#E04A7B',
-    marginLeft: 3,
   },
   brandSubtitle: {
     fontFamily: typography.families.sans,
@@ -555,9 +564,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     transform: [{ scale: 1.06 }],
   },
-  presetEmoji: {
-    fontSize: 18,
-  },
   avatarCheckBadge: {
     position: 'absolute',
     top: -4,
@@ -644,7 +650,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   backStepBtn: {
     width: 32,
@@ -664,6 +670,27 @@ const styles = StyleSheet.create({
     fontFamily: typography.families.sans,
     fontSize: 11.5,
     color: colors.ink.secondary,
+  },
+  userConfirmRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FAF7FD',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+  },
+  userConfirmText: {
+    fontFamily: typography.families.sans,
+    fontSize: 12,
+    color: colors.ink.secondary,
+    flex: 1,
+  },
+  boldText: {
+    fontWeight: '700',
+    color: colors.brand.purpleDark,
   },
   themeGrid: {
     gap: 8,
