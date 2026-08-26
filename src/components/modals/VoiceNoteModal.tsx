@@ -2,7 +2,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, ScrollView, TextInput, Platform } from 'react-native';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
-import { ChevronLeft, Square, Play, Pause, Mic, Check, FileText, ListTodo, Sparkles, Volume2 } from 'lucide-react-native';
+import { 
+  ChevronLeft, 
+  Square, 
+  Play, 
+  Pause, 
+  Mic, 
+  Check, 
+  FileText, 
+  ListTodo, 
+  Sparkles, 
+  Volume2, 
+  Globe, 
+  AlertCircle 
+} from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
 import { speechAudioService } from '../../services/speechAndAudio';
 
@@ -13,39 +26,31 @@ interface VoiceNoteModalProps {
 
 export const VoiceNoteModal: React.FC<VoiceNoteModalProps> = ({ visible, onClose }) => {
   const { addPin, addToDesk, activeBoardId } = useApp();
-  const [isRecording, setIsRecording] = useState(true);
+  const [isRecording, setIsRecording] = useState(false);
+  const [hasStartedEver, setHasStartedEver] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [transcript, setTranscript] = useState('');
   const [liveWaveform, setLiveWaveform] = useState<number[]>([0.2, 0.4, 0.6, 0.8, 0.5, 0.7, 0.9, 0.6, 0.4, 0.3]);
   const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | undefined>(undefined);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [isEditingTranscript, setIsEditingTranscript] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState('en-US');
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+
+  const supportedLanguages = speechAudioService.getSupportedLanguages();
 
   useEffect(() => {
     if (visible) {
-      setIsRecording(true);
+      setIsRecording(false);
+      setHasStartedEver(false);
       setSeconds(0);
       setTranscript('');
       setLiveWaveform([0.2, 0.4, 0.6, 0.8, 0.5, 0.7, 0.9, 0.6, 0.4, 0.3]);
       setRecordedAudioUrl(undefined);
       setIsPlayingAudio(false);
       setIsEditingTranscript(false);
-
-      speechAudioService.startRecording(
-        (text) => {
-          if (text) {
-            setTranscript(text);
-          }
-        },
-        (wf) => {
-          if (wf && wf.length > 0) {
-            setLiveWaveform(wf.slice(-26));
-          }
-        },
-        (sec) => {
-          setSeconds(sec);
-        }
-      );
+      setErrorMessage(null);
     } else {
       speechAudioService.stopRecording(transcript);
       speechAudioService.stopAudio();
@@ -58,28 +63,58 @@ export const VoiceNoteModal: React.FC<VoiceNoteModalProps> = ({ visible, onClose
     };
   }, [visible]);
 
-  const handleToggleRecording = async () => {
-    if (isRecording) {
-      setIsRecording(false);
-      const res = await speechAudioService.stopRecording(transcript);
-      if (res.audioUrl) {
-        setRecordedAudioUrl(res.audioUrl);
-      }
-      if (res.waveform) {
-        setLiveWaveform(res.waveform);
-      }
-      if (res.transcript && !transcript) {
-        setTranscript(res.transcript);
-      }
-    } else {
-      setIsRecording(true);
-      speechAudioService.stopAudio();
-      setIsPlayingAudio(false);
-      speechAudioService.startRecording(
-        (text) => text && setTranscript(text),
-        (wf) => wf && setLiveWaveform(wf.slice(-26)),
-        (sec) => setSeconds(sec)
+  const handleStartRecording = async () => {
+    setErrorMessage(null);
+    setIsRecording(true);
+    setHasStartedEver(true);
+    speechAudioService.stopAudio();
+    setIsPlayingAudio(false);
+
+    try {
+      await speechAudioService.startRecording(
+        (text) => {
+          if (text) {
+            setTranscript(text);
+          }
+        },
+        (wf) => {
+          if (wf && wf.length > 0) {
+            setLiveWaveform(wf.slice(-26));
+          }
+        },
+        (sec) => {
+          setSeconds(sec);
+        },
+        (err) => {
+          setErrorMessage(err);
+        },
+        selectedLanguage
       );
+    } catch (e: any) {
+      setErrorMessage(e?.message || 'Could not start recording. Please check browser microphone permissions.');
+      setIsRecording(false);
+    }
+  };
+
+  const handleStopRecording = async () => {
+    setIsRecording(false);
+    const res = await speechAudioService.stopRecording(transcript);
+    if (res.audioUrl) {
+      setRecordedAudioUrl(res.audioUrl);
+    }
+    if (res.waveform) {
+      setLiveWaveform(res.waveform);
+    }
+    if (res.transcript && !transcript) {
+      setTranscript(res.transcript);
+    }
+  };
+
+  const handleToggleRecording = () => {
+    if (isRecording) {
+      handleStopRecording();
+    } else {
+      handleStartRecording();
     }
   };
 
@@ -211,13 +246,77 @@ export const VoiceNoteModal: React.FC<VoiceNoteModalProps> = ({ visible, onClose
             <View style={styles.headerTitleGroup}>
               <Text style={styles.headerTitle}>Voice Memo & Transcription</Text>
               <View style={styles.statusIndicatorRow}>
-                <View style={[styles.statusDot, isRecording && styles.statusDotRecording]} />
+                <View
+                  style={[
+                    styles.statusDot,
+                    isRecording
+                      ? styles.statusDotRecording
+                      : hasStartedEver
+                      ? styles.statusDotPaused
+                      : styles.statusDotReady,
+                  ]}
+                />
                 <Text style={styles.headerSubtitle}>
-                  {isRecording ? 'Listening & Transcribing live...' : 'Recording paused'}
+                  {isRecording
+                    ? 'Listening & Transcribing live...'
+                    : hasStartedEver
+                    ? 'Recording paused'
+                    : 'Ready to Record'}
                 </Text>
               </View>
             </View>
+
+            {/* Language Selector Pill */}
+            <Pressable
+              onPress={() => setIsLangMenuOpen(!isLangMenuOpen)}
+              style={styles.langPill}
+              hitSlop={6}
+            >
+              <Globe size={13} color={colors.brand.purple} />
+              <Text style={styles.langPillText}>
+                {supportedLanguages.find((l) => l.code === selectedLanguage)?.label.split(' ')[0] || 'English'}
+              </Text>
+            </Pressable>
           </View>
+
+          {/* Language Selection Bar */}
+          {isLangMenuOpen && (
+            <View style={styles.langMenuDropdown}>
+              <Text style={styles.langMenuHeading}>Spoken Language for Transcription:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.langScroll}>
+                {supportedLanguages.map((l) => (
+                  <Pressable
+                    key={l.code}
+                    onPress={() => {
+                      setSelectedLanguage(l.code);
+                      setIsLangMenuOpen(false);
+                    }}
+                    style={[
+                      styles.langChip,
+                      selectedLanguage === l.code && styles.langChipActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.langChipText,
+                        selectedLanguage === l.code && styles.langChipTextActive,
+                      ]}
+                    >
+                      {l.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Error / Permission Notice */}
+          {errorMessage && (
+            <View style={styles.errorBanner}>
+              <AlertCircle size={15} color="#B91C1C" />
+              <Text style={styles.errorBannerText}>{errorMessage}</Text>
+            </View>
+          )}
 
           <ScrollView style={styles.contentArea} showsVerticalScrollIndicator={false}>
             {/* Top Waveform Visualizer Card */}
@@ -235,14 +334,14 @@ export const VoiceNoteModal: React.FC<VoiceNoteModalProps> = ({ visible, onClose
                       styles.waveBar,
                       {
                         height: Math.max(6, amp * 52),
-                        backgroundColor: isRecording ? colors.brand.purple : '#A78BFA',
+                        backgroundColor: isRecording ? colors.brand.purple : '#C4B5FD',
                       },
                     ]}
                   />
                 ))}
               </View>
 
-              {/* Record / Pause and Playback Controls */}
+              {/* Prominent Record / Pause and Playback Controls */}
               <View style={styles.controlsRow}>
                 <Pressable
                   onPress={handleToggleRecording}
@@ -254,9 +353,9 @@ export const VoiceNoteModal: React.FC<VoiceNoteModalProps> = ({ visible, onClose
                   hitSlop={8}
                 >
                   {isRecording ? (
-                    <Square size={16} color="#FFFFFF" fill="#FFFFFF" />
+                    <Square size={18} color="#FFFFFF" fill="#FFFFFF" />
                   ) : (
-                    <Mic size={20} color="#FFFFFF" />
+                    <Mic size={24} color="#FFFFFF" />
                   )}
                 </Pressable>
 
@@ -266,18 +365,32 @@ export const VoiceNoteModal: React.FC<VoiceNoteModalProps> = ({ visible, onClose
                     style={({ pressed }) => [styles.playAudioBtn, pressed && { opacity: 0.8 }]}
                     hitSlop={8}
                   >
-                    {isPlayingAudio ? <Pause size={14} color="#7C3AED" /> : <Play size={14} color="#7C3AED" fill="#7C3AED" />}
-                    <Text style={styles.playAudioBtnText}>{isPlayingAudio ? 'Pause Audio' : 'Preview Audio'}</Text>
+                    {isPlayingAudio ? (
+                      <Pause size={15} color="#7C3AED" />
+                    ) : (
+                      <Play size={15} color="#7C3AED" fill="#7C3AED" />
+                    )}
+                    <Text style={styles.playAudioBtnText}>
+                      {isPlayingAudio ? 'Pause Preview' : 'Preview Audio'}
+                    </Text>
                   </Pressable>
                 )}
               </View>
+
+              <Text style={styles.tapPromptText}>
+                {isRecording
+                  ? 'Tap red square to stop recording'
+                  : hasStartedEver
+                  ? 'Tap microphone to resume or speak more'
+                  : 'Tap the purple microphone to start recording & transcribing'}
+              </Text>
             </View>
 
             {/* Real-time Live Speech Transcription Card */}
             <View style={styles.transcriptSection}>
               <View style={styles.transcriptHeader}>
                 <View style={styles.transcriptionBadge}>
-                  <Sparkles size={13} color={colors.brand.purple} />
+                  <Sparkles size={14} color={colors.brand.purple} />
                   <Text style={styles.transcriptTitle}>Live Text Transcription</Text>
                 </View>
                 <Pressable
@@ -302,7 +415,12 @@ export const VoiceNoteModal: React.FC<VoiceNoteModalProps> = ({ visible, onClose
                   />
                 ) : (
                   <Text style={[styles.transcriptText, !transcript && styles.transcriptPlaceholder]}>
-                    {transcript || (isRecording ? 'Speak now — your voice will appear here as text in real time...' : 'No speech recorded yet. Tap mic or edit text above.')}
+                    {transcript ||
+                      (isRecording
+                        ? 'Listening... Speak into your microphone and words will appear here!'
+                        : hasStartedEver
+                        ? 'No speech recognized yet. You can tap Edit above to type, or tap microphone to speak again.'
+                        : 'Tap the microphone button above and speak. Your voice will automatically turn into text here.')}
                   </Text>
                 )}
               </View>
@@ -312,7 +430,7 @@ export const VoiceNoteModal: React.FC<VoiceNoteModalProps> = ({ visible, onClose
           {/* Action Conversion Buttons */}
           <View style={styles.bottomActions}>
             <Text style={styles.bottomSectionLabel}>Save or Convert As:</Text>
-            
+
             <View style={styles.bottomButtonsGrid}>
               {/* 1. Convert directly to Written Text Note */}
               <Pressable
@@ -407,6 +525,11 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
+  },
+  statusDotReady: {
+    backgroundColor: colors.brand.purple,
+  },
+  statusDotPaused: {
     backgroundColor: colors.ink.faded,
   },
   statusDotRecording: {
@@ -416,6 +539,79 @@ const styles = StyleSheet.create({
     fontFamily: typography.families.sans,
     fontSize: 11.5,
     color: colors.ink.secondary,
+  },
+  langPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: '#EDE8FF',
+    borderWidth: 1,
+    borderColor: 'rgba(124, 58, 237, 0.2)',
+  },
+  langPillText: {
+    fontFamily: typography.families.sans,
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.brand.purpleDark,
+  },
+  langMenuDropdown: {
+    backgroundColor: '#F8F6FD',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(124, 58, 237, 0.1)',
+  },
+  langMenuHeading: {
+    fontFamily: typography.families.sans,
+    fontSize: 10.5,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    color: colors.ink.tertiary,
+    marginBottom: 6,
+  },
+  langScroll: {
+    gap: 6,
+  },
+  langChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+  },
+  langChipActive: {
+    backgroundColor: colors.brand.purple,
+    borderColor: colors.brand.purple,
+  },
+  langChipText: {
+    fontFamily: typography.families.sans,
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: colors.ink.secondary,
+  },
+  langChipTextActive: {
+    color: '#FFFFFF',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 10,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontFamily: typography.families.sans,
+    fontSize: 11.5,
+    color: '#B91C1C',
+    fontWeight: '600',
   },
   contentArea: {
     flex: 1,
@@ -436,7 +632,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '800',
     color: colors.brand.purpleDark,
-    marginBottom: 12,
+    marginBottom: 10,
     letterSpacing: 1,
   },
   waveformRow: {
@@ -444,7 +640,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    height: 56,
+    height: 54,
     width: '100%',
     marginBottom: 14,
   },
@@ -455,12 +651,12 @@ const styles = StyleSheet.create({
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
   },
   stopRecordCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#EF4444',
     alignItems: 'center',
     justifyContent: 'center',
@@ -482,7 +678,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: '#EDE8FF',
-    paddingVertical: 9,
+    paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 14,
     borderWidth: 1,
@@ -493,6 +689,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: colors.brand.purpleDark,
+  },
+  tapPromptText: {
+    fontFamily: typography.families.sans,
+    fontSize: 11,
+    color: colors.ink.tertiary,
+    marginTop: 10,
+    textAlign: 'center',
   },
   transcriptSection: {
     marginBottom: 16,
@@ -534,7 +737,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.08)',
-    minHeight: 140,
+    minHeight: 130,
     maxHeight: 220,
   },
   transcriptText: {
@@ -552,7 +755,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: colors.ink.primary,
-    minHeight: 110,
+    minHeight: 100,
     textAlignVertical: 'top',
   },
   bottomActions: {

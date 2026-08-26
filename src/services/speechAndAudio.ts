@@ -22,6 +22,7 @@ export class SpeechAndAudioService {
 
   public isRecording: boolean = false;
   public accumulatedTranscript: string = '';
+  public activeLanguage: string = 'en-US';
 
   // Check if browser supports Web Speech Recognition
   public isSpeechRecognitionSupported(): boolean {
@@ -29,21 +30,41 @@ export class SpeechAndAudioService {
     return Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
   }
 
+  // Get list of supported spoken languages
+  public getSupportedLanguages(): { code: string; label: string }[] {
+    return [
+      { code: 'en-US', label: 'English (US)' },
+      { code: 'en-GB', label: 'English (UK)' },
+      { code: 'en-IN', label: 'English (India)' },
+      { code: 'es-ES', label: 'Spanish' },
+      { code: 'fr-FR', label: 'French' },
+      { code: 'de-DE', label: 'German' },
+      { code: 'it-IT', label: 'Italian' },
+      { code: 'pt-BR', label: 'Portuguese' },
+      { code: 'ja-JP', label: 'Japanese' },
+      { code: 'zh-CN', label: 'Chinese' },
+      { code: 'hi-IN', label: 'Hindi' },
+    ];
+  }
+
   // Start real microphone recording with live Speech-to-Text transcription
   public async startRecording(
     onTranscript: (text: string) => void,
     onWaveformUpdate: (currentWaveform: number[], latestAmp: number) => void,
-    onTimeUpdate: (seconds: number) => void
+    onTimeUpdate: (seconds: number) => void,
+    onError?: (errorMsg: string) => void,
+    lang: string = 'en-US'
   ): Promise<boolean> {
     try {
       this.audioChunks = [];
       this.recordedWaveform = [];
       this.accumulatedTranscript = '';
+      this.activeLanguage = lang || (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
       this.startTime = Date.now();
       this.isRecording = true;
 
       // 1. Initialize Web Speech Recognition (Speech-to-Text)
-      this.initSpeechRecognition(onTranscript);
+      this.initSpeechRecognition(onTranscript, onError, this.activeLanguage);
 
       // 2. Initialize Microphone & Real-time Waveform Analyzer via Web Audio API
       if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -132,8 +153,11 @@ export class SpeechAndAudioService {
           }
 
           return true;
-        } catch (micErr) {
+        } catch (micErr: any) {
           console.warn('Microphone stream notice:', micErr);
+          if (micErr?.name === 'NotAllowedError' || micErr?.name === 'PermissionDeniedError') {
+            onError?.('Microphone permission was denied. Please allow microphone access in browser settings.');
+          }
           this.startFallbackLoop(onTimeUpdate, onWaveformUpdate);
           return true;
         }
@@ -149,20 +173,26 @@ export class SpeechAndAudioService {
   }
 
   // Initialize Speech Recognition with continuous accumulation and auto-reconnect
-  private initSpeechRecognition(onTranscript: (text: string) => void) {
+  private initSpeechRecognition(
+    onTranscript: (text: string) => void,
+    onError?: (errorMsg: string) => void,
+    lang: string = 'en-US'
+  ) {
     const SpeechRecognition =
       typeof window !== 'undefined' &&
       ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
-    if (!SpeechRecognition) return;
+    if (!SpeechRecognition) {
+      onError?.('Speech recognition is not supported in this browser. You can type or use your device keyboard dictation.');
+      return;
+    }
 
     try {
       this.speechRecognition = new SpeechRecognition();
       this.speechRecognition.continuous = true;
       this.speechRecognition.interimResults = true;
       this.speechRecognition.maxAlternatives = 1;
-      this.speechRecognition.lang =
-        (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
+      this.speechRecognition.lang = lang || 'en-US';
 
       this.speechRecognition.onresult = (event: any) => {
         let finalChunk = '';
@@ -188,7 +218,11 @@ export class SpeechAndAudioService {
       };
 
       this.speechRecognition.onerror = (err: any) => {
-        console.warn('Speech recognition notice:', err?.error || err);
+        const errorType = err?.error;
+        console.warn('Speech recognition notice:', errorType || err);
+        if (errorType === 'not-allowed') {
+          onError?.('Microphone permission denied. Please allow microphone access in your browser.');
+        }
       };
 
       this.speechRecognition.onend = () => {
@@ -213,14 +247,16 @@ export class SpeechAndAudioService {
   // Standalone Dictation helper for any text input or note
   public startDictation(
     onTextUpdate: (text: string) => void,
-    onStatusChange?: (isListening: boolean) => void
+    onStatusChange?: (isListening: boolean) => void,
+    onError?: (errorMsg: string) => void,
+    lang: string = 'en-US'
   ): () => void {
     const SpeechRecognition =
       typeof window !== 'undefined' &&
       ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
     if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser. Please use Safari or Chrome.');
+      onError?.('Speech recognition is not supported in this browser. Please use Chrome or Safari.');
       return () => {};
     }
 
@@ -232,8 +268,7 @@ export class SpeechAndAudioService {
       recognitionInstance = new SpeechRecognition();
       recognitionInstance.continuous = true;
       recognitionInstance.interimResults = true;
-      recognitionInstance.lang =
-        (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
+      recognitionInstance.lang = lang || (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
 
       recognitionInstance.onstart = () => {
         onStatusChange?.(true);
@@ -244,10 +279,11 @@ export class SpeechAndAudioService {
         let interimChunk = '';
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalChunk += event.results[i][0].transcript + ' ';
+          const res = event.results[i];
+          if (res.isFinal) {
+            finalChunk += res[0].transcript + ' ';
           } else {
-            interimChunk += event.results[i][0].transcript;
+            interimChunk += res[0].transcript;
           }
         }
 
@@ -263,6 +299,9 @@ export class SpeechAndAudioService {
 
       recognitionInstance.onerror = (e: any) => {
         console.warn('Dictation notice:', e?.error);
+        if (e?.error === 'not-allowed') {
+          onError?.('Microphone access denied. Please allow microphone permissions.');
+        }
       };
 
       recognitionInstance.onend = () => {
@@ -282,6 +321,7 @@ export class SpeechAndAudioService {
       recognitionInstance.start();
     } catch (e) {
       console.warn('Dictation startup error:', e);
+      onError?.('Could not start microphone dictation.');
     }
 
     // Return stop function
