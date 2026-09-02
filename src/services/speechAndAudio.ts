@@ -246,10 +246,11 @@ export class SpeechAndAudioService {
 
   // Standalone Dictation helper for any text input or note
   public startDictation(
-    onTextUpdate: (text: string) => void,
+    onTextUpdate: (fullText: string) => void,
     onStatusChange?: (isListening: boolean) => void,
     onError?: (errorMsg: string) => void,
-    lang: string = 'en-US'
+    lang: string = 'en-US',
+    initialText: string = ''
   ): () => void {
     const SpeechRecognition =
       typeof window !== 'undefined' &&
@@ -262,77 +263,107 @@ export class SpeechAndAudioService {
 
     let recognitionInstance: any = null;
     let isActive = true;
-    let baseText = '';
+    let baseTranscript = '';
+    const prefix = initialText ? initialText.trim() : '';
 
-    try {
-      recognitionInstance = new SpeechRecognition();
-      recognitionInstance.continuous = true;
-      recognitionInstance.interimResults = true;
-      recognitionInstance.lang = lang || (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
+    const emitFullText = (spokenChunk: string) => {
+      const trimmedSpoken = spokenChunk.trim();
+      if (!trimmedSpoken) {
+        if (prefix) onTextUpdate(prefix);
+        return;
+      }
+      const full = prefix ? `${prefix} ${trimmedSpoken}` : trimmedSpoken;
+      onTextUpdate(full);
+    };
 
-      recognitionInstance.onstart = () => {
-        onStatusChange?.(true);
-      };
+    const cleanupInstance = () => {
+      if (recognitionInstance) {
+        try {
+          recognitionInstance.onend = null;
+          recognitionInstance.onerror = null;
+          recognitionInstance.onresult = null;
+          recognitionInstance.onstart = null;
+          recognitionInstance.stop();
+          recognitionInstance.abort?.();
+        } catch (e) {}
+        recognitionInstance = null;
+      }
+    };
 
-      recognitionInstance.onresult = (event: any) => {
-        let finalChunk = '';
-        let interimChunk = '';
+    const createAndStart = () => {
+      if (!isActive) return;
+      cleanupInstance();
 
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          const res = event.results[i];
-          if (res.isFinal) {
-            finalChunk += res[0].transcript + ' ';
-          } else {
-            interimChunk += res[0].transcript;
-          }
-        }
+      try {
+        recognitionInstance = new SpeechRecognition();
+        recognitionInstance.continuous = true;
+        recognitionInstance.interimResults = true;
+        recognitionInstance.lang = lang || (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
 
-        if (finalChunk) {
-          baseText += finalChunk;
-        }
+        recognitionInstance.onstart = () => {
+          if (isActive) onStatusChange?.(true);
+        };
 
-        const combined = (baseText + interimChunk).trim();
-        if (combined) {
-          onTextUpdate(combined);
-        }
-      };
+        recognitionInstance.onresult = (event: any) => {
+          if (!isActive) return;
+          let finalChunk = '';
+          let interimChunk = '';
 
-      recognitionInstance.onerror = (e: any) => {
-        console.warn('Dictation notice:', e?.error);
-        if (e?.error === 'not-allowed') {
-          onError?.('Microphone access denied. Please allow microphone permissions.');
-        }
-      };
-
-      recognitionInstance.onend = () => {
-        if (isActive) {
-          setTimeout(() => {
-            if (isActive && recognitionInstance) {
-              try {
-                recognitionInstance.start();
-              } catch (e) {}
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const res = event.results[i];
+            if (res.isFinal) {
+              finalChunk += res[0].transcript + ' ';
+            } else {
+              interimChunk += res[0].transcript;
             }
-          }, 150);
-        } else {
+          }
+
+          if (finalChunk) {
+            baseTranscript += finalChunk;
+          }
+
+          const currentSpoken = (baseTranscript + interimChunk).trim();
+          emitFullText(currentSpoken);
+        };
+
+        recognitionInstance.onerror = (e: any) => {
+          const err = e?.error;
+          console.warn('Dictation notice:', err);
+          if (err === 'not-allowed') {
+            isActive = false;
+            onError?.('Microphone access denied. Please allow microphone permissions in settings.');
+            onStatusChange?.(false);
+          }
+        };
+
+        recognitionInstance.onend = () => {
+          if (isActive) {
+            // Re-instantiate after brief delay to avoid WebKit crash/loop
+            setTimeout(() => {
+              if (isActive) {
+                createAndStart();
+              }
+            }, 300);
+          } else {
+            onStatusChange?.(false);
+          }
+        };
+
+        recognitionInstance.start();
+      } catch (e) {
+        console.warn('Dictation startup notice:', e);
+        if (isActive) {
           onStatusChange?.(false);
         }
-      };
+      }
+    };
 
-      recognitionInstance.start();
-    } catch (e) {
-      console.warn('Dictation startup error:', e);
-      onError?.('Could not start microphone dictation.');
-    }
+    createAndStart();
 
     // Return stop function
     return () => {
       isActive = false;
-      if (recognitionInstance) {
-        try {
-          recognitionInstance.onend = null;
-          recognitionInstance.stop();
-        } catch (e) {}
-      }
+      cleanupInstance();
       onStatusChange?.(false);
     };
   }

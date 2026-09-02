@@ -67,11 +67,15 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
       setIsDictating(false);
     } else {
       setIsDictating(true);
+      const currentBody = bodyText;
       const stopFn = speechAudioService.startDictation(
         (text) => {
-          setBodyText((prev) => (prev ? prev + ' ' + text : text));
+          setBodyText(text);
         },
-        (listening) => setIsDictating(listening)
+        (listening) => setIsDictating(listening),
+        undefined,
+        'en-US',
+        currentBody
       );
       stopDictateRef.current = stopFn;
     }
@@ -114,6 +118,12 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   const currentPaper = paperTones.find((p) => p.id === selectedPaperTone) || paperTones[0];
 
   const handleSave = () => {
+    if (stopDictateRef.current) {
+      stopDictateRef.current();
+      stopDictateRef.current = null;
+    }
+    setIsDictating(false);
+
     const finalTitle = title.trim();
     const finalBody = bodyText.trim() || '...';
 

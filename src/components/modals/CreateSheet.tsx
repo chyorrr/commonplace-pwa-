@@ -47,8 +47,23 @@ export const CreateSheet: React.FC = () => {
       } else if (boards.length > 0) {
         setSelectedBoardId(boards[0].id);
       }
+    } else {
+      if (stopDictationRef.current) {
+        stopDictationRef.current();
+        stopDictationRef.current = null;
+      }
+      setIsDictatingText(false);
     }
   }, [isCreateSheetOpen, initialCreateType, activeBoardId, boards]);
+
+  useEffect(() => {
+    return () => {
+      if (stopDictationRef.current) {
+        stopDictationRef.current();
+        stopDictationRef.current = null;
+      }
+    };
+  }, []);
 
   // Form states
   const [title, setTitle] = useState('');
@@ -104,11 +119,15 @@ export const CreateSheet: React.FC = () => {
       setIsDictatingText(false);
     } else {
       setIsDictatingText(true);
+      const currentBody = body;
       const stopFn = speechAudioService.startDictation(
         (text) => {
-          setBody((prev) => (prev ? prev + ' ' + text : text));
+          setBody(text);
         },
-        (listening) => setIsDictatingText(listening)
+        (listening) => setIsDictatingText(listening),
+        undefined,
+        'en-US',
+        currentBody
       );
       stopDictationRef.current = stopFn;
     }
@@ -169,6 +188,11 @@ export const CreateSheet: React.FC = () => {
   };
 
   const resetForm = () => {
+    if (stopDictationRef.current) {
+      stopDictationRef.current();
+      stopDictationRef.current = null;
+    }
+    setIsDictatingText(false);
     setSelectedType(null);
     setTitle('');
     setBody('');
@@ -196,6 +220,11 @@ export const CreateSheet: React.FC = () => {
   };
 
   const handleClose = () => {
+    if (stopDictationRef.current) {
+      stopDictationRef.current();
+      stopDictationRef.current = null;
+    }
+    setIsDictatingText(false);
     if (isRecordingAudio) {
       speechAudioService.stopRecording('');
     }
@@ -204,6 +233,12 @@ export const CreateSheet: React.FC = () => {
   };
 
   const handleSubmit = () => {
+    if (stopDictationRef.current) {
+      stopDictationRef.current();
+      stopDictationRef.current = null;
+    }
+    setIsDictatingText(false);
+
     if (selectedType === 'new-board') {
       const newId = createBoard(
         title || 'Untitled Board',

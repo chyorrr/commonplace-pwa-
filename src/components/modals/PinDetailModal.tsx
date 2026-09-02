@@ -161,11 +161,15 @@ export const PinDetailModal: React.FC = () => {
       setIsDictatingEdit(false);
     } else {
       setIsDictatingEdit(true);
+      const currentBody = editBody;
       const stopFn = speechAudioService.startDictation(
         (text) => {
-          setEditBody((prev) => (prev ? prev + ' ' + text : text));
+          setEditBody(text);
         },
-        (listening) => setIsDictatingEdit(listening)
+        (listening) => setIsDictatingEdit(listening),
+        undefined,
+        'en-US',
+        currentBody
       );
       stopDictateRef.current = stopFn;
     }

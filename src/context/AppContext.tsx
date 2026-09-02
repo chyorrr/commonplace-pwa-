@@ -173,6 +173,34 @@ const safeStorage = {
   },
 };
 
+// Seamless fallback loader across all previous PWA versions
+const getWithLegacyFallback = (primaryKey: string, legacyName: string): string | null => {
+  const current = safeStorage.getItem(primaryKey);
+  if (current) return current;
+
+  const candidateKeys = [
+    `commonplace_${legacyName}_v7`,
+    `commonplace_${legacyName}_v6`,
+    `commonplace_${legacyName}_v5`,
+    `commonplace_${legacyName}_v4`,
+    `commonplace_${legacyName}_v3`,
+    `commonplace_${legacyName}_v2`,
+    `commonplace_${legacyName}_v1`,
+    `commonplace_${legacyName}`,
+    `scrapbook_${legacyName}`,
+  ];
+
+  for (const k of candidateKeys) {
+    if (k === primaryKey) continue;
+    const val = safeStorage.getItem(k);
+    if (val) {
+      safeStorage.setItem(primaryKey, val);
+      return val;
+    }
+  }
+  return null;
+};
+
 const defaultReminders: ReminderItem[] = [];
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -192,7 +220,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 1. Auth & Accounts State
   const [savedAccounts, setSavedAccounts] = useState<UserProfile[]>(() => {
-    const raw = safeStorage.getItem(STORAGE_KEYS.ACCOUNTS);
+    const raw = getWithLegacyFallback(STORAGE_KEYS.ACCOUNTS, 'accounts');
     if (raw) {
       try {
         return JSON.parse(raw);
@@ -205,7 +233,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const [user, setUser] = useState<UserProfile | null>(() => {
-    const raw = safeStorage.getItem(STORAGE_KEYS.USER);
+    const raw = getWithLegacyFallback(STORAGE_KEYS.USER, 'user');
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
@@ -273,7 +301,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Theme state
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
-    const raw = safeStorage.getItem(STORAGE_KEYS.THEME);
+    const raw = getWithLegacyFallback(STORAGE_KEYS.THEME, 'theme');
     return (raw as ThemeMode) || 'sakura';
   });
 
@@ -296,7 +324,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 3. Boards State (Empty by default per user request)
   const [boards, setBoards] = useState<Board[]>(() => {
-    const raw = safeStorage.getItem(STORAGE_KEYS.BOARDS);
+    const raw = getWithLegacyFallback(STORAGE_KEYS.BOARDS, 'boards');
     if (raw) {
       try {
         return JSON.parse(raw);
@@ -313,7 +341,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 4. Desk State
   const [deskItems, setDeskItems] = useState<DeskItem[]>(() => {
-    const raw = safeStorage.getItem(STORAGE_KEYS.DESK);
+    const raw = getWithLegacyFallback(STORAGE_KEYS.DESK, 'desk');
     if (raw) {
       try {
         return JSON.parse(raw);
@@ -330,7 +358,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 5. Sticker Studio State
   const [stickers, setStickers] = useState<CustomSticker[]>(() => {
-    const raw = safeStorage.getItem(STORAGE_KEYS.STICKERS);
+    const raw = getWithLegacyFallback(STORAGE_KEYS.STICKERS, 'stickers');
     if (raw) {
       try {
         return JSON.parse(raw);
@@ -347,7 +375,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // 6. Reminders State
   const [reminders, setReminders] = useState<ReminderItem[]>(() => {
-    const raw = safeStorage.getItem(STORAGE_KEYS.REMINDERS);
+    const raw = getWithLegacyFallback(STORAGE_KEYS.REMINDERS, 'reminders');
     if (raw) {
       try {
         return JSON.parse(raw);
